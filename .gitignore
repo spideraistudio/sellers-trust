@@ -1,0 +1,78 @@
+# =========================
+# Dependencies
+# =========================
+node_modules/
+.pnp
+.pnp.js
+.yarn/install-state.gz
+
+# =========================
+# Build / cache
+# =========================
+.next/
+out/
+build/
+dist/
+.turbo/
+.cache/
+*.tsbuildinfo
+next-env.d.ts
+
+# =========================
+# Testing / coverage
+# =========================
+coverage/
+.nyc_output/
+
+# =========================
+# Env / secrets
+# =========================
+.env
+.env.*
+!.env.example
+
+# =========================
+# Logs / debug
+# =========================
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# =========================
+# OS files
+# =========================
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# =========================
+# IDE / editor
+# =========================
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# =========================
+# Cursor
+# =========================
+.cursor/
+.cursorrules
+*.cursor*
+.claude/
+
+# =========================
+# Markdown (do not commit)
+# =========================
+*.md
+*.mdx
+
+# =========================
+# Misc local / temp
+# =========================
+*.local
+*.tmp
+*.temp
+.vercel

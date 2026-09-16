@@ -1,0 +1,4 @@
+import { redirect } from "next/navigation";import { cookies } from "next/headers";import { digest } from "./passwords";import { reportDb } from "./report-store";import { memberFromRow } from "./member-data";
+export const SESSION_COOKIE="stn_member_session";
+export async function currentMember(){const token=(await cookies()).get(SESSION_COOKIE)?.value;if(!token)return null;const row=await reportDb().prepare("SELECT m.* FROM member_sessions s JOIN members m ON m.id=s.member_id AND m.credential_version=s.version WHERE s.token_hash=? AND s.expires_at>? AND m.status='approved' LIMIT 1").bind(digest(token),Date.now()).first();return memberFromRow(row);}
+export async function requireApprovedMember(){const member=await currentMember();if(!member)redirect("/login");if(member.mustChangePassword)redirect("/member/password");return member;}

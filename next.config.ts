@@ -1,0 +1,17 @@
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  poweredByHeader: false,
+  async headers() {
+    // NOTE: Content-Security-Policy is set per-request by middleware.ts with a
+    // cryptographic nonce (H1 fix). Static security headers remain here.
+    return [{source:"/:path*",headers:[
+      {key:"X-Content-Type-Options",value:"nosniff"},
+      {key:"Referrer-Policy",value:"strict-origin-when-cross-origin"},
+      {key:"Permissions-Policy",value:"camera=(), microphone=(), geolocation=()"},
+      {key:"Strict-Transport-Security",value:"max-age=31536000"},
+    ]},...['/admin/:path*','/member/:path*','/api/:path*','/login','/admin-login','/forgot-password'].map(source=>({source,headers:[{key:"Cache-Control",value:"private, no-store"}]}))];
+  },
+};
+
+export default nextConfig;

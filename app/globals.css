@@ -1,0 +1,335 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "../vendor/shadcn-tailwind-4.13.0.css";
+
+@utility scrollbar-thin {
+  scrollbar-width: thin;
+}
+
+@utility scrollbar-none {
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@utility scrollbar-gutter-stable {
+  scrollbar-gutter: stable;
+}
+
+:root {
+  --background: #f5f7fb;
+  --foreground: #171717;
+  --card: #ffffff;
+  --card-foreground: #171717;
+  --popover: #ffffff;
+  --popover-foreground: #171717;
+  --primary: #15388c;
+  --primary-foreground: #fafafa;
+  --secondary: #f5f5f5;
+  --secondary-foreground: #171717;
+  --muted: #f5f5f5;
+  --muted-foreground: #737373;
+  --accent: #f5f5f5;
+  --accent-foreground: #171717;
+  --destructive: #e7000b;
+  --border: #e5e5e5;
+  --input: #e5e5e5;
+  --ring: #d1aa36;
+  --chart-1: #f54900;
+  --chart-2: #009689;
+  --chart-3: #104e64;
+  --chart-4: #ffb900;
+  --chart-5: #fe9a00;
+  --radius: 0.875rem;
+  --sidebar: #fafafa;
+  --sidebar-foreground: #171717;
+  --sidebar-primary: #171717;
+  --sidebar-primary-foreground: #fafafa;
+  --sidebar-accent: #f5f5f5;
+  --sidebar-accent-foreground: #171717;
+  --sidebar-border: #e5e5e5;
+  --sidebar-ring: #a1a1a1;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier New", monospace;
+}
+
+.dark {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+    --card: #171717;
+    --card-foreground: #ededed;
+    --popover: #171717;
+    --popover-foreground: #ededed;
+    --primary: #ededed;
+    --primary-foreground: #171717;
+    --secondary: #262626;
+    --secondary-foreground: #ededed;
+    --muted: #262626;
+    --muted-foreground: #a1a1a1;
+    --accent: #262626;
+    --accent-foreground: #ededed;
+    --destructive: #ff6467;
+    --border: #ffffff1a;
+    --input: #ffffff26;
+    --ring: #737373;
+    --chart-1: #8e51ff;
+    --chart-2: #00bc7d;
+    --chart-3: #fe9a00;
+    --chart-4: #ad46ff;
+    --chart-5: #ff2056;
+    --sidebar: #171717;
+    --sidebar-foreground: #ededed;
+    --sidebar-primary: #8e51ff;
+    --sidebar-primary-foreground: #ededed;
+    --sidebar-accent: #262626;
+    --sidebar-accent-foreground: #ededed;
+    --sidebar-border: #ffffff1a;
+    --sidebar-ring: #737373;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, Helvetica, sans-serif;
+}
+
+html { scroll-behavior: smooth; }
+
+/* ── Custom keyframe animations ── */
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes float-slow {
+  0%, 100% { transform: translateY(0) translateX(0); }
+  50% { transform: translateY(-20px) translateX(10px); }
+}
+@keyframes gradient-shift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+@keyframes pulse-ring {
+  0% { box-shadow: 0 0 0 0 rgba(21,56,140,0.4); }
+  70% { box-shadow: 0 0 0 12px rgba(21,56,140,0); }
+  100% { box-shadow: 0 0 0 0 rgba(21,56,140,0); }
+}
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@utility animate-fade-in-up {
+  animation: fade-in-up 0.6s cubic-bezier(0.22,0.8,0.22,1) both;
+}
+@utility animate-fade-in {
+  animation: fade-in 0.5s ease both;
+}
+@utility animate-float-slow {
+  animation: float-slow 6s ease-in-out infinite;
+}
+@utility animate-pulse-ring {
+  animation: pulse-ring 2s cubic-bezier(0.4,0,0.6,1) infinite;
+}
+
+/* Staggered animation delays */
+.delay-100 { animation-delay: 0.1s; }
+.delay-200 { animation-delay: 0.2s; }
+.delay-300 { animation-delay: 0.3s; }
+.delay-400 { animation-delay: 0.4s; }
+.delay-500 { animation-delay: 0.5s; }
+
+/* Animated gradient background */
+.gradient-mesh {
+  background: linear-gradient(135deg, #15388c 0%, #1e4daf 25%, #2852a4 50%, #1e4daf 75%, #15388c 100%);
+  background-size: 400% 400%;
+  animation: gradient-shift 12s ease infinite;
+}
+
+/* Shimmer loading effect */
+.shimmer {
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.15) 50%, transparent 100%);
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+}
+
+/* Glass morphism */
+.glass {
+  background: rgba(255,255,255,0.08);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.12);
+}
+
+/* Custom scrollbar for the whole app */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 5px; border: 2px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background: #94a3b8; background-clip: padding-box; }
+.dark ::-webkit-scrollbar-thumb { background: #475569; background-clip: padding-box; }
+
+.dark .bg-white { background-color: #111827 !important; }
+.dark .bg-white\/95, .dark .bg-white\/92, .dark .bg-white\/90, .dark .bg-white\/85, .dark .bg-white\/65, .dark .bg-white\/60, .dark .bg-white\/58 { background-color: rgb(17 24 39 / .9) !important; }
+.dark .bg-\[\#f5f7fb\] { background-color: #070f20 !important; }
+.dark main { color: #f8fafc; }
+.dark .text-slate-900 { color: #f8fafc !important; }
+.dark .text-slate-700, .dark .text-slate-600, .dark .text-slate-400 { color: #cbd5e1 !important; }
+.dark .text-slate-500 { color: #94a3b8 !important; }
+.dark .border-slate-200, .dark .border-slate-100 { border-color: #334155 !important; }
+.dark input, .dark select, .dark textarea { background-color: #0f172a; color: #f8fafc; border-color: #475569; }
+.dark input::placeholder, .dark textarea::placeholder { color: #94a3b8; opacity: 1; }
+
+.dark .bg-slate-50, .dark .bg-slate-100 { background-color: #1e293b !important; }
+.dark .bg-slate-200\/70 { background-color: rgb(51 65 85 / .75) !important; }
+.dark .bg-rose-50 { background-color: #3b111c !important; }
+.dark .bg-violet-50 { background-color: #2e1850 !important; }
+.dark .bg-amber-50, .dark .bg-amber-50\/70 { background-color: #3b2a08 !important; }
+.dark .bg-amber-100 { background-color: #4a3408 !important; }
+.dark .bg-emerald-50 { background-color: #082f2a !important; }
+.dark .bg-blue-50, .dark .bg-blue-50\/80 { background-color: #10254c !important; }
+.dark .text-rose-700, .dark .text-rose-800, .dark .text-rose-900 { color: #fecdd3 !important; }
+.dark .text-violet-900 { color: #ede9fe !important; }
+.dark .text-amber-700, .dark .text-amber-800, .dark .text-amber-900 { color: #fde68a !important; }
+.dark .text-emerald-700, .dark .text-emerald-800, .dark .text-emerald-900, .dark .text-emerald-950 { color: #a7f3d0 !important; }
+.dark .text-blue-900 { color: #dbeafe !important; }
+.dark .border-rose-200, .dark .border-violet-200, .dark .border-amber-200, .dark .border-amber-300, .dark .border-emerald-200, .dark .border-blue-200 { border-color: #475569 !important; }
+
+/* ── Accessibility: respect prefers-reduced-motion ── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  /* Disable the floating orbs and gradient animations entirely */
+  .animate-float-slow,
+  .gradient-mesh {
+    animation: none !important;
+  }
+}
+
+/* ── Focus-visible styling for keyboard navigation ── */
+:focus-visible {
+  outline: 2px solid #15388c;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.dark :focus-visible {
+  outline-color: #d1aa36;
+}
+/* Remove default outline only when focus-visible is supported (mouse clicks) */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* ── Print styles for legal pages ── */
+@media print {
+  /* Hide non-essential UI chrome */
+  nav,
+  footer,
+  .theme-toggle,
+  button[aria-label*="mode"],
+  a[aria-label="Back to home"] {
+    display: none !important;
+  }
+  /* Use full width, white background, black text */
+  main {
+    background: white !important;
+    color: black !important;
+  }
+  /* Remove decorative shadows and borders */
+  * {
+    box-shadow: none !important;
+    border-color: #ccc !important;
+  }
+  /* Expand the content card for print */
+  .rounded-3xl,
+  .rounded-2xl {
+    border-radius: 0 !important;
+  }
+  /* Ensure links show their URL in print */
+  a[href^="mailto:"]::after,
+  a[href^="http"]::after {
+    content: " (" attr(href) ")";
+    font-size: 0.85em;
+    color: #555;
+  }
+  /* Page margins */
+  @page {
+    margin: 2cm;
+  }
+  /* Avoid breaking inside sections */
+  section {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  h1, h2, h3 {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+}
+
+/* ── High-contrast mode (Windows High Contrast / forced-colors) ── */
+@media (forced-colors: active) {
+  /* Ensure interactive elements have visible borders in high-contrast mode */
+  a, button, input, select, textarea, [role="button"] {
+    border-color: ButtonText !important;
+  }
+  /* Ensure the gradient backgrounds don't hide text in high-contrast */
+  .gradient-mesh {
+    background: CanvasText !important;
+    color: Canvas !important;
+  }
+  /* Keep focus indicators visible */
+  :focus-visible {
+    outline: 3px solid Highlight;
+    outline-offset: 2px;
+  }
+}
