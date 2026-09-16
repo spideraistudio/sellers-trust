@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 /**
- * Per-request nonce-based Content-Security-Policy middleware.
+ * Per-request nonce-based Content-Security-Policy proxy.
  *
  * Generates a cryptographic nonce per request, attaches it to the request
  * headers so the layout can apply it to inline scripts (JSON-LD), and rewrites
@@ -26,7 +26,7 @@ function generateNonce(): string {
     .replace(/=+$/, "");
 }
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   // Skip static/metadata routes — they get default headers from next.config.ts.
   if (STATIC_PATHS.some(p => request.nextUrl.pathname === p)) {
     return NextResponse.next();

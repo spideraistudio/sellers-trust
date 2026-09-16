@@ -7,7 +7,7 @@
     "app/**": {
       "maxDuration": 30
     },
-    "middleware.ts": {
+    "proxy.ts": {
       "maxDuration": 10
     }
   }

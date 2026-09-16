@@ -3,7 +3,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   async headers() {
-    // NOTE: Content-Security-Policy is set per-request by middleware.ts with a
+    // NOTE: Content-Security-Policy is set per-request by proxy.ts with a
     // cryptographic nonce (H1 fix). Static security headers remain here.
     return [{source:"/:path*",headers:[
       {key:"X-Content-Type-Options",value:"nosniff"},
