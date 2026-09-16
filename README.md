@@ -1,33 +1,33 @@
 # Sellers Trust Network
 
-Next.js 16 app (SSR + API routes + MongoDB).
+Next.js 16 SSR app (API routes + MongoDB) for Hostinger Node.js hosting.
 
-## Hostinger Node.js deploy
+## Hostinger settings (must match)
 
-In hPanel → Node.js Apps, use:
-
-| Setting | Value |
+| Field | Value |
 | --- | --- |
-| Application type | `next` |
-| Node.js version | `20` (or newer) |
-| Install command | `npm ci` |
+| Framework preset | Next.js |
+| Branch | `Dev` |
+| Node version | `20.x` |
+| Root directory | `./` |
 | Build command | `npm run build` |
-| Start command | `npm run start -- -p $PORT` |
+| Package manager | npm |
 | Output directory | `.next` |
+| Entry file | leave empty (Hostinger starts the standalone server) |
 
-Set these environment variables before deploy:
+Also set env vars in Hostinger before redeploy: `MONGODB_URI`, admin secrets, etc.
 
-- `MONGODB_URI`
-- `ADMIN_LOGIN_ID`
-- `ADMIN_PASSWORD_HASH` (or `ADMIN_INITIAL_PASSWORD`)
-- `ADMIN_EMAILS`
-- `IDENTIFIER_LOOKUP_KEY`
-- any other secrets your local `.env` uses --
+## Why "Build Failed" can show even when logs look green
+
+Hostinger always runs Next in **standalone** mode and then looks for `.next/standalone`.  
+If that folder is missing, the UI shows **Build Failed** even after `✓ Compiled successfully`.
+
+This repo sets `output: "standalone"` in `next.config.ts` so that artifact is always produced.
 
 ## Local
 
 ```bash
 npm ci
 npm run build
-npm run start -- -p 3000
+npm run start
 ```
