@@ -22,7 +22,7 @@ Set these environment variables before deploy:
 - `ADMIN_PASSWORD_HASH` (or `ADMIN_INITIAL_PASSWORD`)
 - `ADMIN_EMAILS`
 - `IDENTIFIER_LOOKUP_KEY`
-- any other secrets your local `.env` uses
+- any other secrets your local `.env` uses --
 
 ## Local
 
