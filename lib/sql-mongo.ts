@@ -23,7 +23,7 @@ function dbNameFromUrl(url:string){
 export async function mongoClient(){
   if(client)return client;
   if(!connecting){
-    connecting=MongoClient.connect(mongoUrl(),{maxPoolSize:8,tls:true,tlsAllowInvalidCertificates:true}).then(async c=>{
+    connecting=MongoClient.connect(mongoUrl(),{maxPoolSize:8,tls:true,tlsAllowInvalidCertificates:true,serverSelectionTimeoutMS:15000,autoSelectFamily:false}).then(async c=>{
       client=c;
       await ensureIndexes(c.db(dbNameFromUrl(mongoUrl())));
       return c;

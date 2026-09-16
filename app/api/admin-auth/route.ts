@@ -41,10 +41,12 @@ export async function POST(request:Request){
  }catch(error){
   console.error("admin-auth", error);
   if(error instanceof RequestBodyError)return reply({error:error.message},error.status);
-  const code=error && typeof error==="object" && "code" in error ? String(error.code) : "";
+  const code=error && typeof error==="object" && "code" in error ? String((error as {code?:unknown}).code) : "";
+  const name=error instanceof Error ? error.name : "";
   if(code==="GUARD_FAILED")return reply({error:"Unable to complete the request. Refresh and try again."},409);
-  if(["ECONNREFUSED","ETIMEDOUT","ENOTFOUND","28P01","3D000","08001","08006","MongoNetworkError","MongoServerSelectionError","SELF_SIGNED_CERT_IN_CHAIN"].includes(code)){
-   return reply({error:"Database is unavailable. Check MONGODB_URI."},503);
+  if(["ECONNREFUSED","ETIMEDOUT","ENOTFOUND","28P01","3D000","08001","08006","MongoNetworkError","MongoServerSelectionError","SELF_SIGNED_CERT_IN_CHAIN"].includes(code)
+    || ["MongoNetworkError","MongoServerSelectionError"].includes(name)){
+   return reply({error:"Database is unavailable. Check MONGODB_URI and Atlas Network Access (IP whitelist)."},503);
   }
   return reply({error:"Unable to complete the request. Refresh and try again."},500);
  }
