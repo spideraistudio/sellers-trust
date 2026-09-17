@@ -1,9 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Hostinger Node.js apps start `.next/standalone/server.js`.
-  // Without this, compile can succeed while the deploy is still marked failed.
-  output: "standalone",
+  // Hostinger Next.js Cloud Startup runs `next start` automatically.
+  // Do NOT use output:"standalone" with that preset — it makes next start fail
+  // after a successful build (Hostinger then marks the deploy as failed).
   poweredByHeader: false,
   async headers() {
     // NOTE: Content-Security-Policy is set per-request by proxy.ts with a
