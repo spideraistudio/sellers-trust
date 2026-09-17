@@ -6,6 +6,12 @@ node_modules/
 .pnp.js
 .yarn/install-state.gz
 
+# Use npm only on Hostinger (dual lockfiles break standalone path)
+bun.lock
+bun.lockb
+yarn.lock
+pnpm-lock.yaml
+
 # =========================
 # Build / cache
 # =========================
@@ -48,16 +54,12 @@ Thumbs.db
 Desktop.ini
 
 # =========================
-# IDE / editor
+# IDE / editor / Cursor
 # =========================
 .vscode/
 .idea/
 *.swp
 *.swo
-
-# =========================
-# Cursor
-# =========================
 .cursor/
 .cursorrules
 *.cursor*
@@ -70,9 +72,10 @@ Desktop.ini
 *.mdx
 
 # =========================
-# Misc local / temp
+# Platform noise / local
 # =========================
+.vercel
+vercel.json
 *.local
 *.tmp
 *.temp
-.vercel

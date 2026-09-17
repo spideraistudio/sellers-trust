@@ -1,9 +1,13 @@
 import type { NextConfig } from "next";
+import path from "node:path";
 
 const nextConfig: NextConfig = {
-  // Hostinger Next.js Cloud Startup runs `next start` automatically.
-  // Do NOT use output:"standalone" with that preset — it makes next start fail
-  // after a successful build (Hostinger then marks the deploy as failed).
+  // Hostinger also forces standalone for Next.js apps and starts
+  // `.next/standalone/server.js`. Keep this explicit for local parity.
+  output: "standalone",
+  // Pin tracing to this app folder so a parent/sibling lockfile on Hostinger
+  // cannot move the standalone output and fail deploy with "no standalone server".
+  outputFileTracingRoot: path.join(process.cwd()),
   poweredByHeader: false,
   async headers() {
     // NOTE: Content-Security-Policy is set per-request by proxy.ts with a
