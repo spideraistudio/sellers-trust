@@ -2,11 +2,9 @@ import type { NextConfig } from "next";
 import path from "node:path";
 
 const nextConfig: NextConfig = {
-  // Hostinger also forces standalone for Next.js apps and starts
-  // `.next/standalone/server.js`. Keep this explicit for local parity.
-  output: "standalone",
-  // Pin tracing to this app folder so a parent/sibling lockfile on Hostinger
-  // cannot move the standalone output and fail deploy with "no standalone server".
+  // Hostinger injects output:"standalone" itself and starts the bundled server.
+  // Pinning the tracing root keeps that standalone output inside this app folder
+  // even when another lockfile exists above the checkout on the build machine.
   outputFileTracingRoot: path.join(process.cwd()),
   poweredByHeader: false,
   async headers() {
