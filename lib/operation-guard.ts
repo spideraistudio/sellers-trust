@@ -4,9 +4,10 @@ import { reportDb } from "./report-store";
  * operationGuard — transactional guard against TOCTOU races.
  *
  * Inserts a row into `operation_guards` whose `valid` column is computed from a
- * boolean SQL predicate, inside the same DB batch as the guarded mutation.
- * A CHECK(valid=1) constraint on the table causes the entire batch to abort if
- * the predicate is false at execution time.
+ * boolean SQL predicate, inside the same MongoDB transaction (via sql-mongo batch)
+ * as the guarded mutation.
+ * A CHECK(valid=1) style abort (throw on valid≠1) causes the entire batch to
+ * roll back if the predicate is false at execution time.
  *
  * ⚠️  SECURITY CONTRACT — the `predicate` string is interpolated into SQL.
  *     It MUST be a hard-coded literal that contains NO user input and NO

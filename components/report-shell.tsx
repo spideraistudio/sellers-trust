@@ -1,4 +1,48 @@
-import { NotificationLink } from "@/components/notification-link";
-import { BrandLogo } from "@/components/brand-logo";
-import { AppSidebar } from "@/components/app-sidebar";
-export function ReportShell({title,description,children,admin=false}:{title:string;description:string;children:React.ReactNode;admin?:boolean}){return <main className="min-h-screen bg-[#f5f7fb] text-slate-900">{!admin&&<><AppSidebar/><header className="sticky top-0 z-20 border-b bg-white/95 py-3 pl-36 pr-5 backdrop-blur"><div className="mx-auto flex max-w-5xl items-center justify-between gap-4"><a href="/member" className="flex items-center gap-2 font-semibold text-[#15388c] lg:hidden"><span className="grid size-9 place-items-center rounded-lg bg-[#15388c]"><BrandLogo compact className="size-7"/></span>Sellers Trust Network</a><div className="ml-auto flex items-center gap-3"><NotificationLink/><a href="/member/profile" className="rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm font-semibold text-[#15388c]">Company profile</a></div></div></header></>}<section className={`px-5 py-9 ${admin?"mx-auto max-w-5xl":"lg:px-10"}`}><div className={admin?"":"mx-auto max-w-5xl"}><h1 className="text-3xl font-semibold tracking-tight text-[#15388c] sm:text-4xl">{title}</h1><p className="mb-8 mt-3 max-w-3xl leading-7 text-slate-600">{description}</p>{children}</div></section></main>}
+"use client";
+
+import type { ReactNode } from "react";
+import {
+  useWorkspacePageMeta,
+  WorkspaceFilters,
+  type WorkspaceAction,
+} from "@/components/workspace-shell";
+
+/**
+ * Registers page title/actions into the second workspace header
+ * and portals filters into that same bar.
+ */
+export function ReportShell({
+  title,
+  description,
+  children,
+  admin = false,
+  actions,
+  filters,
+}: {
+  title: string;
+  description: string;
+  children: ReactNode;
+  admin?: boolean;
+  actions?: WorkspaceAction[];
+  filters?: ReactNode;
+}) {
+  useWorkspacePageMeta({
+    title,
+    description,
+    actions,
+  });
+
+  return (
+    <>
+      {filters ? <WorkspaceFilters>{filters}</WorkspaceFilters> : null}
+      <div className="flex h-full min-h-0 flex-col [&_input]:rounded-[12px] [&_select]:rounded-[12px] [&_textarea]:rounded-[12px] [&_button]:rounded-[12px]">
+        {children}
+      </div>
+    </>
+  );
+}
+
+/** Portal filter controls into the second header bar. */
+export function PageFilters({ children }: { children: ReactNode }) {
+  return <WorkspaceFilters>{children}</WorkspaceFilters>;
+}

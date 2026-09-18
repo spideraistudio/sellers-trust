@@ -1,3 +1,5 @@
-import { NotificationLink } from "@/components/notification-link";
-import { AppSidebar } from "@/components/app-sidebar";
-export default function AdminLayout({children}:{children:React.ReactNode}){return <div className="min-h-screen bg-[#f5f7fb]"><AppSidebar admin/><div><div className="sticky top-0 z-20 border-b bg-white/95 py-3 pl-36 pr-5 backdrop-blur"><div className="mx-auto flex max-w-7xl items-center justify-between gap-5 text-sm"><span className="font-semibold text-[#15388c] lg:hidden">Sellers Trust Network · Admin</span><span className="hidden text-slate-500 lg:block">Administrator workspace</span><NotificationLink admin/></div></div>{children}</div></div>}
+import { WorkspaceShell } from "@/components/workspace-shell";
+
+export default function AdminLayout({ children }: { children: React.ReactNode }) {
+  return <WorkspaceShell admin>{children}</WorkspaceShell>;
+}

@@ -48,7 +48,6 @@ export function proxy(request: NextRequest) {
 
   // Strict CSP: script-src uses nonce instead of 'unsafe-inline'.
   // style-src keeps 'unsafe-inline' (Next.js injects runtime styles).
-  // frame-ancestors allows the owner's ChatGPT Site frame.
   // React's development build uses eval() for stack reconstruction; never allow it in production.
   const csp = [
     "default-src 'self'",
@@ -60,7 +59,7 @@ export function proxy(request: NextRequest) {
     "object-src 'none'",
     "base-uri 'none'",
     "form-action 'self'",
-    "frame-ancestors 'self' https://chatgpt.com",
+    "frame-ancestors 'self'",
   ].join("; ");
 
   response.headers.set("Content-Security-Policy", csp);

@@ -33,12 +33,13 @@ export default function Logout() {
     <main className="grid min-h-screen place-items-center bg-gradient-to-br from-slate-50 via-[#f5f7fb] to-blue-50 p-5">
       <div className="flex w-full max-w-sm flex-col items-center rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
         {/* Logo */}
-        <div className="mb-5 flex items-center gap-2">
+        {/* Signing out, so the mark points at the public home rather than /home. */}
+        <Link href="/" className="mb-5 flex items-center gap-2">
           <span className="grid size-10 place-items-center rounded-xl bg-[#15388c]">
             <BrandLogo compact className="size-9" />
           </span>
           <span className="font-semibold text-slate-900">Sellers Trust Network</span>
-        </div>
+        </Link>
 
         {error ? (
           <>

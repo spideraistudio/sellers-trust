@@ -1,4 +1,4 @@
-import type { Member } from "@/db/schema";
+import type { Member } from "@/lib/member-data";
 import type { DashboardProfile } from "@/components/member-dashboard";
 import { categoryAccess } from "./category-access";
 

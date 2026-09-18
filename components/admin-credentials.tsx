@@ -46,12 +46,12 @@ export function AdminCredentials({memberId,pending,hasCredentials,compact=false}
  const shareText=credentials?`Member login: ${typeof window!=="undefined"?window.location.origin:""}/login\nMember ID: ${credentials.loginId}\nTemporary password: ${credentials.temporaryPassword}\nPlease change your password at first login.`:"";
 
  return <>
-  <div className={compact?"":"mt-4"}>
-   <button type="button" disabled={busy} className={`${compact?"w-full rounded-lg bg-[#15388c] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#102d74]":"rounded-lg bg-[#15388c] px-4 py-2 text-sm font-semibold text-white hover:bg-[#102d74]"} disabled:opacity-50`} onClick={issueCredentials}>{label}</button>
+  <div className={compact?"":"mt-0"}>
+   <button type="button" disabled={busy} className={`inline-flex h-10 items-center justify-center rounded-[12px] bg-[#15388c] px-4 text-[13px] font-semibold text-white transition hover:bg-[#102d74] disabled:opacity-50 ${compact?"w-full":""}`} onClick={issueCredentials}>{label}</button>
    {error && !credentials && <p role="alert" className="mt-2 text-xs text-rose-700">{error}</p>}
   </div>
   <Dialog open={!!credentials} onOpenChange={open=>{if(!open)closeAfterCopy();}}>
-   <DialogContent showCloseButton={false} className="max-h-[min(90vh,36rem)] w-[calc(100%-2rem)] max-w-md gap-0 overflow-y-auto border-slate-200 p-0 sm:max-w-md" onPointerDownOutside={event=>event.preventDefault()} onEscapeKeyDown={event=>event.preventDefault()}>
+   <DialogContent showCloseButton={false} className="max-h-[min(90vh,36rem)] w-[calc(100%-2rem)] max-w-md gap-0 overflow-y-auto rounded-[12px] border-slate-200 p-0 sm:max-w-md" onPointerDownOutside={event=>event.preventDefault()} onEscapeKeyDown={event=>event.preventDefault()}>
     <DialogHeader className="border-b border-amber-200 bg-amber-50 px-6 py-5 text-left">
      <div className="flex items-start gap-3">
       <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-white text-amber-700 shadow-sm"><KeyRound className="size-5"/></span>

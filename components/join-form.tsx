@@ -1,11 +1,39 @@
 "use client";
-import { FormEvent, useMemo, useState, type ChangeEvent } from "react";
+import { FormEvent, useState, type ChangeEvent } from "react";
 import { LocationFields } from "@/components/location-fields";
-import { Check, X, Loader2, Building2, FileText, User, Phone, Mail, Tag } from "lucide-react";
+import { Check, X, Loader2, Building2, FileText, User, Phone, Mail, MapPin, Tag } from "lucide-react";
 
 const GSTIN_RE = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/;
 const MOBILE_RE = /^[6-9][0-9]{9}$/;
 const EMAIL_RE = /^\S+@\S+\.\S+$/;
+const PINCODE_RE = /^[1-9][0-9]{5}$/;
+
+// Fields counted by the completion bar. Entries with a pattern only count once
+// the value is actually well-formed, so the bar cannot run ahead of the form.
+const TRACKED_FIELDS: { name: string; pattern?: RegExp }[] = [
+  { name: "companyName" },
+  { name: "gstin", pattern: GSTIN_RE },
+  { name: "responsiblePersonName" },
+  { name: "mobileNumber", pattern: MOBILE_RE },
+  { name: "email", pattern: EMAIL_RE },
+  { name: "state" },
+  { name: "district" },
+  { name: "pincode", pattern: PINCODE_RE },
+  { name: "taluka" },
+  { name: "address" },
+];
+
+function completionPercent(form: HTMLFormElement) {
+  const data = new FormData(form);
+  const fields = data.get("category") === "other"
+    ? [...TRACKED_FIELDS, { name: "otherCategory" }]
+    : TRACKED_FIELDS;
+  const filled = fields.filter(({ name, pattern }) => {
+    const value = String(data.get(name) ?? "").trim();
+    return pattern ? pattern.test(value.toUpperCase()) : value.length > 0;
+  }).length;
+  return Math.round((filled / fields.length) * 100);
+}
 
 function FieldIcon({ icon: Icon, valid, show }: { icon: typeof Building2; valid: boolean; show: boolean }) {
   if (!show) return (
@@ -46,6 +74,7 @@ const Input = ({ label, name, type = "text", placeholder = "", required = true, 
 
 export function JoinForm() {
   const [category, setCategory] = useState("agriculture");
+  const [progress, setProgress] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
@@ -58,22 +87,6 @@ export function JoinForm() {
   const gstValid = GSTIN_RE.test(gstInput.toUpperCase());
   const mobileValid = MOBILE_RE.test(mobileInput);
   const emailValid = EMAIL_RE.test(emailInput);
-
-  // Completion progress (6 core fields + location)
-  const progress = useMemo(() => {
-    let filled = 0;
-    const total = 7;
-    if (companyInput.trim().length >= 2) filled++;
-    if (gstValid) filled++;
-    if (personInput.trim().length >= 2) filled++;
-    if (mobileValid) filled++;
-    if (emailValid) filled++;
-    if (category === "other" || category === "agriculture") filled++;
-    // location fields are tracked by the LocationFields component internally;
-    // approximate with a flag after first interaction
-    filled++; // location is always "attempted" since it's required
-    return Math.min(100, Math.round((filled / total) * 100));
-  }, [companyInput, gstValid, personInput, mobileValid, emailValid, category]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -143,7 +156,11 @@ export function JoinForm() {
         </div>
       </div>
 
-      <form onSubmit={submit} className="p-6 sm:p-8">
+      <form
+        onSubmit={submit}
+        onChange={event => setProgress(completionPercent(event.currentTarget))}
+        className="p-6 sm:p-8"
+      >
         {/* Honeypot */}
         <input name="website" tabIndex={-1} autoComplete="off" className="hidden" aria-hidden="true" />
 
@@ -180,12 +197,15 @@ export function JoinForm() {
               <Tag className="pointer-events-none absolute right-3 top-1/2 size-5 -translate-y-1/2 text-slate-400" />
             </div>
           </label>
+          {/* Spans the full row so revealing it never leaves a hole in the grid
+              and never re-pairs the location fields below. */}
           {category === "other" && (
-            <Input label="Specify category" name="otherCategory" placeholder="Category name" icon={Tag} showIcon={false} valid={false} />
+            <div className="sm:col-span-2">
+              <Input label="Specify category" name="otherCategory" placeholder="Describe your business category" icon={Tag} />
+            </div>
           )}
-          <div className={category === "other" ? "hidden" : "hidden sm:block"} />
           <LocationFields />
-          <Input label="Taluka / Tehsil" name="taluka" />
+          <Input label="Taluka / Tehsil" name="taluka" placeholder="Taluka or tehsil name" icon={MapPin} />
           <label className="space-y-2 sm:col-span-2">
             <span className="flex items-center gap-1.5 text-sm font-semibold text-slate-700">Registered address<span className="text-rose-500">*</span></span>
             <textarea
@@ -203,8 +223,7 @@ export function JoinForm() {
           )}
         </div>
 
-        <div className="mt-6 flex flex-col gap-4 border-t border-slate-100 pt-6 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm text-slate-500">No ChatGPT account required.</p>
+        <div className="mt-6 flex flex-col gap-4 border-t border-slate-100 pt-6 sm:flex-row sm:items-center sm:justify-end">
           <button
             disabled={loading}
             className="flex h-12 items-center justify-center gap-2 rounded-xl bg-[#15388c] px-7 font-semibold text-white shadow-lg shadow-[#15388c]/20 transition hover:bg-[#1d46a8] hover:shadow-xl disabled:opacity-60"

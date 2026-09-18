@@ -1,214 +1,356 @@
-import { AdminCredentials } from "@/components/admin-credentials";
 import { redirect } from "next/navigation";
-import { chatGPTSignInPath,getChatGPTUser } from "../chatgpt-auth";
-import { isConfiguredAdmin,listMembersForAdmin } from "@/lib/member-data";
+import Link from "next/link";
+import { chatGPTSignInPath, getChatGPTUser } from "../chatgpt-auth";
+import { isConfiguredAdmin } from "@/lib/member-data";
 import { adminCounts } from "@/lib/admin-dashboard";
-import { MemberStatusForm } from "@/components/member-status-form";
-import { formatIndiaDate } from "@/lib/india-time";
-import { AlertTriangle,Building2,CheckCircle2,Clock3,Download,FileCheck2,FileText,FileX2,Gavel,IndianRupee,KeyRound,Search,Users } from "lucide-react";
+import { ReportShell } from "@/components/report-shell";
+import { AdminDashboardCharts } from "@/components/admin-dashboard-charts";
+import {
+  AlertTriangle,
+  ArrowRight,
+  Building2,
+  CheckCircle2,
+  Clock3,
+  FileCheck2,
+  FileText,
+  FileX2,
+  Gavel,
+  IndianRupee,
+  KeyRound,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 
-export const dynamic="force-dynamic";
+export const dynamic = "force-dynamic";
 
-const money=(paise:number)=>new Intl.NumberFormat("en-IN",{style:"currency",currency:"INR",maximumFractionDigits:0}).format(paise/100);
+const money = (paise: number) =>
+  new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 0,
+  }).format((Number(paise) || 0) / 100);
 
-const cardTone={
- amber:{value:"text-amber-700",bar:"bg-amber-400",icon:"bg-amber-50 text-amber-700"},
- emerald:{value:"text-emerald-800",bar:"bg-emerald-500",icon:"bg-emerald-50 text-emerald-800"},
- rose:{value:"text-rose-700",bar:"bg-rose-400",icon:"bg-rose-50 text-rose-700"},
- slate:{value:"text-slate-700",bar:"bg-slate-400",icon:"bg-slate-100 text-slate-600"},
-} as const;
+const num = (value: number) =>
+  new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(Number(value) || 0);
 
-function statusClass(status:string){
- if(status==="approved")return "bg-emerald-50 text-emerald-800 ring-emerald-200";
- if(status==="pending")return "bg-amber-50 text-amber-800 ring-amber-200";
- if(status==="rejected")return "bg-rose-50 text-rose-800 ring-rose-200";
- return "bg-slate-100 text-slate-600 ring-slate-200";
-}
+type Tone = "amber" | "emerald" | "rose" | "slate" | "blue";
 
-function categoryLabel(member:{category:string;otherCategory?:string|null}){
- return member.category==="agriculture"?"Agriculture":member.otherCategory||"Other";
-}
+const toneClass: Record<Tone, { value: string; icon: string; soft: string; arrow: string }> = {
+  amber: {
+    value: "text-amber-800",
+    icon: "bg-amber-50 text-amber-700",
+    soft: "border-amber-200 bg-amber-50/70",
+    arrow: "text-amber-600",
+  },
+  emerald: {
+    value: "text-emerald-800",
+    icon: "bg-emerald-50 text-emerald-700",
+    soft: "border-emerald-200 bg-emerald-50/70",
+    arrow: "text-emerald-600",
+  },
+  rose: {
+    value: "text-rose-800",
+    icon: "bg-rose-50 text-rose-700",
+    soft: "border-rose-200 bg-rose-50/70",
+    arrow: "text-rose-600",
+  },
+  slate: {
+    value: "text-slate-800",
+    icon: "bg-slate-100 text-slate-600",
+    soft: "border-slate-200 bg-slate-50",
+    arrow: "text-slate-500",
+  },
+  blue: {
+    value: "text-[#15388c]",
+    icon: "bg-[#ece8f8] text-[#15388c]",
+    soft: "border-blue-200 bg-blue-50/60",
+    arrow: "text-[#15388c]",
+  },
+};
 
-function locationLine(member:{address?:string;taluka?:string;district?:string;state?:string}){
- return [member.address,member.taluka,member.district,member.state].filter(Boolean).join(", ");
-}
+type StatCard = {
+  label: string;
+  value: string | number;
+  href: string;
+  tone: Tone;
+  icon: LucideIcon;
+};
 
-export default async function AdminPage({searchParams}:{searchParams:Promise<{q?:string;status?:string;category?:string;from?:string;to?:string}>}){
- const user=await getChatGPTUser();
- if(!user)return <main className="grid min-h-screen place-items-center bg-[#f5f7fb] p-5"><a href={chatGPTSignInPath("/admin")} target="_top" className="rounded-xl bg-[#15388c] px-7 py-4 font-semibold text-white">Administrator sign in</a></main>;
- if(!isConfiguredAdmin(user.email))redirect("/join");
- const params=await searchParams,q=String(params.q||"").trim().toLowerCase(),status=String(params.status||""),category=String(params.category||""),from=/^\d{4}-\d{2}-\d{2}$/.test(String(params.from||""))?new Date(`${params.from}T00:00:00Z`).valueOf():0,to=/^\d{4}-\d{2}-\d{2}$/.test(String(params.to||""))?new Date(`${params.to}T23:59:59.999Z`).valueOf():Number.MAX_SAFE_INTEGER;
- const [allMembers,counts]=await Promise.all([listMembersForAdmin(),adminCounts()]);
- const members=allMembers.filter(member=>{
-  const created=new Date(member.createdAt).valueOf();
-  const createdOk=!Number.isFinite(created)||(created>=from&&created<=to);
-  return createdOk&&(!q||`${member.companyName} ${member.gstin} ${member.loginId||""} ${member.responsiblePersonName} ${member.mobileNumber} ${member.email}`.toLowerCase().includes(q))&&(!status||member.status===status)&&(!category||member.category===category);
- });
- const cards=[
-  {label:"Pending companies",value:counts.pendingMembers,href:"#companies",tone:"amber" as const,icon:Building2},
-  {label:"Pending reports",value:counts.pendingReports,href:"/admin/reports",tone:"amber" as const,icon:FileText},
-  {label:"Pending resolutions",value:counts.pendingResolutions,href:"/admin/resolutions",tone:"amber" as const,icon:Gavel},
-  {label:"Approved members",value:counts.approvedMembers,href:"#companies",tone:"emerald" as const,icon:Users},
-  {label:"Approved reports",value:counts.approvedReports,href:"/admin/reports",tone:"emerald" as const,icon:FileCheck2},
-  {label:"Rejected reports",value:counts.rejectedReports,href:"/admin/reports",tone:"slate" as const,icon:FileX2},
-  {label:"Open disputes",value:counts.openDisputes,href:"/admin/resolutions",tone:"rose" as const,icon:AlertTriangle},
-  {label:"Resolved disputes",value:counts.resolvedDisputes,href:"/admin/resolutions",tone:"emerald" as const,icon:CheckCircle2},
-  {label:"Total disputed amount",value:money(counts.totalDisputedPaise),href:"/admin/reports?status=approved&disputeStatus=reported",tone:"rose" as const,icon:IndianRupee},
-  {label:"Amount resolved",value:money(counts.resolvedDisputedPaise),href:"/admin/reports?status=approved&disputeStatus=resolved",tone:"emerald" as const,icon:IndianRupee},
-  {label:"Open disputed amount",value:money(counts.openDisputedPaise),href:"/admin/reports?status=approved&disputeStatus=reported",tone:"amber" as const,icon:IndianRupee},
-  {label:"Password reset requests",value:counts.pendingPasswordResets,href:"#companies",tone:"slate" as const,icon:KeyRound},
-  {label:"Expiring in 30 days",value:counts.expiringMemberships,href:"#companies",tone:"amber" as const,icon:Clock3},
- ];
+type StatGroup = {
+  title: string;
+  cards: StatCard[];
+};
 
- return <main className="min-h-screen bg-[#f5f7fb] p-5 text-slate-900 lg:p-10">
-  <section className="mx-auto max-w-7xl">
-   <header className="flex flex-wrap items-end justify-between gap-5">
-    <div>
-     <p className="text-sm font-semibold text-[#a57c10]">Administrator console</p>
-     <h1 className="mt-2 text-4xl font-semibold tracking-[-.04em] text-[#15388c]">Platform overview</h1>
-     <p className="mt-3 max-w-2xl text-slate-500">Review pending work and monitor Sellers Trust Network activity.</p>
-    </div>
-    <nav className="flex flex-wrap gap-3 text-sm font-semibold">
-     <a href="/admin/reports" className="rounded-xl bg-[#15388c] px-5 py-3 text-white shadow-sm hover:bg-[#102d74]">Review reports</a>
-     <a href="/join" className="rounded-xl border border-blue-200 bg-white px-5 py-3 text-[#15388c] hover:bg-blue-50">Register company</a>
-     <a href="/admin/preview" className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-slate-700 hover:bg-slate-50">Member preview</a>
-    </nav>
-   </header>
-
-   {counts.unusualLast24>0&&<a href="/admin/audit?q=security" className="mt-6 block rounded-2xl border border-rose-200 bg-rose-50 p-5 text-rose-900"><strong>{counts.unusualLast24} unusual activit{counts.unusualLast24===1?"y":"ies"} detected in the last 24 hours.</strong><span className="ml-2 text-sm underline">Open audit trail</span></a>}
-
-   <section className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-    {cards.map(card=>{
-     const Icon=card.icon;
-     const tone=cardTone[card.tone];
-     return <a key={card.label} href={card.href} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-      <span className={`block h-1 ${tone.bar}`}/>
-      <div className="p-5">
-       <div className="flex items-start justify-between gap-3">
-        <p className="text-sm font-medium text-slate-500">{card.label}</p>
-        <span className={`grid size-9 place-items-center rounded-xl ${tone.icon}`}><Icon className="size-4"/></span>
-       </div>
-       <p className={`mt-3 text-3xl font-semibold tracking-tight ${tone.value}`}>{card.value}</p>
-       <p className="mt-3 text-sm font-semibold text-[#15388c]">Open details →</p>
-      </div>
-     </a>;
-    })}
-   </section>
-
-   <section id="companies" className="mt-8 scroll-mt-5">
-    <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-     <div className="flex flex-wrap items-end justify-between gap-4 border-b border-slate-100 px-6 py-5">
-      <div>
-       <h2 className="text-2xl font-semibold text-[#15388c]">Company memberships</h2>
-       <p className="mt-1 text-slate-500">Review company identity and manage member access.</p>
-      </div>
-      <div className="flex flex-wrap items-center gap-2">
-       <span className="rounded-full border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-800">{counts.pendingMembers} awaiting review</span>
-       <a href="/api/admin/export?type=members" className="inline-flex items-center gap-2 rounded-lg border border-emerald-200 bg-white px-4 py-2 text-sm font-semibold text-emerald-800 hover:bg-emerald-50"><Download className="size-4"/>Export CSV</a>
-      </div>
-     </div>
-
-     <form method="get" className="grid gap-3 border-b border-slate-100 bg-slate-50/70 p-4 md:grid-cols-12 md:items-end">
-      <label className="md:col-span-4">
-       <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">Search</span>
-       <span className="relative block">
-        <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400"/>
-        <input name="q" defaultValue={params.q} placeholder="Company, GSTIN, Member ID, mobile or email" className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-3 text-sm outline-none ring-[#15388c]/20 focus:border-[#15388c] focus:ring-4"/>
-       </span>
-      </label>
-      <label className="md:col-span-2">
-       <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">Status</span>
-       <select name="status" defaultValue={status} className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus:border-[#15388c]">
-        <option value="">All statuses</option>
-        <option value="pending">Pending</option>
-        <option value="approved">Approved</option>
-        <option value="rejected">Rejected</option>
-        <option value="deactivated">Deactivated</option>
-       </select>
-      </label>
-      <label className="md:col-span-2">
-       <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">Category</span>
-       <select name="category" defaultValue={category} className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus:border-[#15388c]">
-        <option value="">All categories</option>
-        <option value="agriculture">Agriculture</option>
-        <option value="other">Other</option>
-       </select>
-      </label>
-      <label className="md:col-span-2">
-       <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">Joined from</span>
-       <input type="date" name="from" defaultValue={params.from} className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus:border-[#15388c]"/>
-      </label>
-      <label className="md:col-span-2">
-       <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">Joined to</span>
-       <input type="date" name="to" defaultValue={params.to} className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus:border-[#15388c]"/>
-      </label>
-      <div className="flex gap-2 md:col-span-12">
-       <button className="rounded-xl bg-[#15388c] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#102d74]">Apply filters</button>
-       <a href="/admin#companies" className="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">Clear</a>
-       <p className="ml-auto self-center text-sm text-slate-500">{members.length===1?"1 company shown":`${members.length} companies shown`}</p>
-      </div>
-     </form>
-
-     {members.length===0?<p className="p-12 text-center text-slate-500">No company memberships match these filters.</p>:
-     <>
-      <div className="overflow-x-auto">
-       <table className="min-w-[1080px] w-full text-left text-sm">
-        <thead className="bg-slate-50 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
-         <tr>
-          <th className="px-6 py-3.5">Company</th>
-          <th className="px-4 py-3.5">GSTIN</th>
-          <th className="px-4 py-3.5">Status</th>
-          <th className="px-4 py-3.5">Category</th>
-          <th className="px-4 py-3.5">Contact</th>
-          <th className="px-4 py-3.5">Joined</th>
-          <th className="px-4 py-3.5">Disputes</th>
-          <th className="sticky right-0 bg-slate-50 px-6 py-3.5 text-right shadow-[-8px_0_8px_-8px_rgba(15,23,42,0.12)]">Actions</th>
-         </tr>
-        </thead>
-        <tbody className="divide-y divide-slate-100">
-         {members.map(member=>
-          <tr key={String(member.id)} className="group align-top transition hover:bg-slate-50/80">
-           <td className="px-6 py-5">
-            <a href={`/admin/members/${member.id}`} className="font-semibold text-[#15388c] hover:underline">{member.companyName||"—"}</a>
-            {member.loginId&&<p className="mt-1 inline-flex rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] text-slate-600">{member.loginId}</p>}
-            <p className="mt-1 max-w-xs text-xs leading-5 text-slate-500">{locationLine(member)||"—"}</p>
-           </td>
-           <td className="px-4 py-5">
-            <code className="rounded-lg bg-slate-50 px-2 py-1 font-mono text-xs text-slate-700">{member.gstin||"—"}</code>
-           </td>
-           <td className="px-4 py-5">
-            <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold capitalize ring-1 ring-inset ${statusClass(member.status||"pending")}`}>{member.status||"pending"}</span>
-           </td>
-           <td className="px-4 py-5 text-slate-700">{categoryLabel(member)}</td>
-           <td className="px-4 py-5">
-            <p className="font-medium text-slate-800">{member.responsiblePersonName||"—"}</p>
-            {member.mobileNumber?<a href={`tel:${member.mobileNumber}`} className="mt-1 block text-xs text-slate-500 hover:text-[#15388c]">{member.mobileNumber}</a>:<p className="mt-1 text-xs text-slate-400">No mobile</p>}
-            {member.email?<a href={`mailto:${member.email}`} className="mt-1 block truncate text-xs text-slate-500 hover:text-[#15388c]">{member.email}</a>:<p className="mt-1 text-xs text-slate-400">No email</p>}
-           </td>
-           <td className="whitespace-nowrap px-4 py-5 text-slate-600">{formatIndiaDate(member.createdAt)}</td>
-           <td className="px-4 py-5">
-            {member.reportedDisputes||member.resolvedDisputes?
-             <div className="space-y-1 text-xs font-semibold">
-              <a href={`/admin/reports?status=approved&memberId=${member.id}&disputeStatus=reported`} className="block text-rose-700 hover:underline">{member.reportedDisputes} reported</a>
-              <a href={`/admin/reports?status=approved&memberId=${member.id}&disputeStatus=resolved`} className="block text-emerald-700 hover:underline">{member.resolvedDisputes} resolved</a>
-             </div>
-             :<span className="text-xs text-slate-400">None</span>}
-           </td>
-           <td className="sticky right-0 bg-white px-6 py-5 shadow-[-8px_0_8px_-8px_rgba(15,23,42,0.12)] group-hover:bg-slate-50">
-            <div className="ml-auto flex w-40 flex-col gap-2">
-             <a href={`/admin/members/${member.id}`} className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-[#15388c] hover:bg-slate-50">Open record</a>
-             {["pending","approved","deactivated"].includes(member.status)&&<MemberStatusForm compact memberId={member.id} status={member.status}/>}
-             {["pending","approved"].includes(member.status)&&<AdminCredentials compact memberId={member.id} pending={member.status==="pending"} hasCredentials={!!member.passwordHash}/>}
+function TotalsGrid({ cards }: { cards: StatCard[] }) {
+  return (
+    <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-4">
+      {cards.map(card => {
+        const Icon = card.icon;
+        const tone = toneClass[card.tone];
+        return (
+          <Link
+            key={card.label}
+            href={card.href}
+            className="group rounded-[12px] border border-slate-200 bg-white px-3 py-3 transition hover:border-[#15388c]/35 hover:shadow-sm"
+          >
+            <div className="flex items-start justify-between gap-2">
+              <p className="text-[11px] font-medium leading-snug text-slate-500">{card.label}</p>
+              <span className={`grid size-7 shrink-0 place-items-center rounded-[8px] ${tone.icon}`}>
+                <Icon className="size-3.5" />
+              </span>
             </div>
-           </td>
-          </tr>
-         )}
-        </tbody>
-       </table>
-      </div>
-     </>}
+            <p className={`mt-2 text-[18px] font-semibold tracking-tight ${tone.value}`}>
+              {typeof card.value === "number" ? num(card.value) : card.value}
+            </p>
+            <div
+              className={`mt-2 flex items-center justify-end gap-1 text-[11px] font-semibold ${tone.arrow} opacity-70 transition group-hover:translate-x-0.5 group-hover:opacity-100`}
+            >
+              <span>Open</span>
+              <ArrowRight className="size-3.5" />
+            </div>
+          </Link>
+        );
+      })}
     </div>
-   </section>
-  </section>
- </main>;
+  );
+}
+
+export default async function AdminPage() {
+  const user = await getChatGPTUser();
+  if (!user) {
+    return (
+      <main className="grid min-h-screen place-items-center bg-[#f5f7fb] p-5">
+        <a
+          href={chatGPTSignInPath("/admin")}
+          target="_top"
+          className="rounded-[12px] bg-[#15388c] px-7 py-4 font-semibold text-white"
+        >
+          Administrator sign in
+        </a>
+      </main>
+    );
+  }
+  if (!isConfiguredAdmin(user.email)) redirect("/join");
+
+  const counts = await adminCounts();
+
+  const attentionNeeded =
+    counts.pendingMembers +
+    counts.pendingReports +
+    counts.pendingResolutions +
+    counts.pendingPasswordResets;
+
+  const groups: StatGroup[] = [
+    {
+      title: "Needs attention",
+      cards: [
+        {
+          label: "Pending companies",
+          value: counts.pendingMembers,
+          href: "/admin/companies?status=pending",
+          tone: "amber",
+          icon: Building2,
+        },
+        {
+          label: "Pending reports",
+          value: counts.pendingReports,
+          href: "/admin/reports?status=pending",
+          tone: "amber",
+          icon: FileText,
+        },
+        {
+          label: "Pending resolutions",
+          value: counts.pendingResolutions,
+          href: "/admin/resolutions",
+          tone: "amber",
+          icon: Gavel,
+        },
+        {
+          label: "Password resets",
+          value: counts.pendingPasswordResets,
+          href: "/admin/companies",
+          tone: "slate",
+          icon: KeyRound,
+        },
+      ],
+    },
+    {
+      title: "Membership",
+      cards: [
+        {
+          label: "Approved members",
+          value: counts.approvedMembers,
+          href: "/admin/companies?status=approved",
+          tone: "emerald",
+          icon: Users,
+        },
+        {
+          label: "Deactivated",
+          value: counts.deactivatedMembers,
+          href: "/admin/companies?status=deactivated",
+          tone: "slate",
+          icon: Building2,
+        },
+        {
+          label: "Rejected applicants",
+          value: counts.rejectedMembers,
+          href: "/admin/companies?status=rejected",
+          tone: "rose",
+          icon: FileX2,
+        },
+        {
+          label: "Expiring in 30 days",
+          value: counts.expiringMemberships,
+          href: "/admin/companies?status=approved",
+          tone: "amber",
+          icon: Clock3,
+        },
+      ],
+    },
+    {
+      title: "Seller reports",
+      cards: [
+        {
+          label: "All reports",
+          value: counts.totalReports,
+          href: "/admin/reports?status=all",
+          tone: "blue",
+          icon: FileText,
+        },
+        {
+          label: "Approved reports",
+          value: counts.approvedReports,
+          href: "/admin/reports?status=approved",
+          tone: "emerald",
+          icon: FileCheck2,
+        },
+        {
+          label: "Rejected reports",
+          value: counts.rejectedReports,
+          href: "/admin/reports?status=rejected",
+          tone: "slate",
+          icon: FileX2,
+        },
+        {
+          label: "Open disputes",
+          value: counts.openDisputes,
+          href: "/admin/reports?status=all",
+          tone: "rose",
+          icon: AlertTriangle,
+        },
+        {
+          label: "Resolved disputes",
+          value: counts.resolvedDisputes,
+          href: "/admin/reports?status=approved&disputeStatus=resolved",
+          tone: "emerald",
+          icon: CheckCircle2,
+        },
+      ],
+    },
+    {
+      title: "Dispute amounts",
+      cards: [
+        {
+          label: "Total disputed",
+          value: money(counts.totalDisputedPaise),
+          href: "/admin/reports?status=all",
+          tone: "rose",
+          icon: IndianRupee,
+        },
+        {
+          label: "Amount resolved",
+          value: money(counts.resolvedDisputedPaise),
+          href: "/admin/reports?status=approved&disputeStatus=resolved",
+          tone: "emerald",
+          icon: IndianRupee,
+        },
+        {
+          label: "Open disputed",
+          value: money(counts.openDisputedPaise),
+          href: "/admin/reports?status=all",
+          tone: "amber",
+          icon: IndianRupee,
+        },
+      ],
+    },
+  ];
+
+  return (
+    <ReportShell
+      admin
+      title="Platform overview"
+      description="Review pending work and monitor Sellers Trust Network activity."
+      actions={[
+        { href: "/admin/reports?status=pending", label: "Review reports", variant: "primary" },
+        { href: "/admin/companies?status=pending", label: "Member companies", variant: "secondary" },
+      ]}
+    >
+      <div className="space-y-5">
+        <div
+          className={`rounded-[12px] border px-4 py-3 ${
+            attentionNeeded > 0 ? toneClass.amber.soft : toneClass.emerald.soft
+          }`}
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-[13px] font-semibold text-slate-900">
+              {attentionNeeded > 0
+                ? `${num(attentionNeeded)} item${attentionNeeded === 1 ? "" : "s"} need attention`
+                : "Queue is clear"}
+              <span className="ml-2 font-normal text-slate-600">
+                · Cos {num(counts.pendingMembers)} · Reports {num(counts.pendingReports)} · Res{" "}
+                {num(counts.pendingResolutions)}
+              </span>
+            </p>
+            {counts.unusualLast24 > 0 ? (
+              <Link
+                href="/admin/audit?q=security"
+                className="inline-flex items-center gap-1 rounded-[12px] border border-rose-200 bg-rose-50 px-2.5 py-1 text-[11px] font-semibold text-rose-800"
+              >
+                {num(counts.unusualLast24)} security alert{counts.unusualLast24 === 1 ? "" : "s"}
+                <ArrowRight className="size-3.5" />
+              </Link>
+            ) : null}
+          </div>
+        </div>
+
+        <section className="space-y-4">
+          <div className="flex items-center gap-2">
+            <span className="h-4 w-1 rounded-full bg-[#15388c]" />
+            <h2 className="text-[13px] font-semibold text-slate-900">Totals</h2>
+          </div>
+
+          {groups.map(group => (
+            <div key={group.title} className="space-y-2">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">
+                {group.title}
+              </p>
+              <TotalsGrid cards={group.cards} />
+            </div>
+          ))}
+        </section>
+
+        <section className="space-y-2.5">
+          <div className="flex items-center gap-2">
+            <span className="h-4 w-1 rounded-full bg-[#15388c]" />
+            <h2 className="text-[13px] font-semibold text-slate-900">Graphs</h2>
+          </div>
+          <AdminDashboardCharts
+            pendingMembers={counts.pendingMembers}
+            approvedMembers={counts.approvedMembers}
+            rejectedMembers={counts.rejectedMembers}
+            deactivatedMembers={counts.deactivatedMembers}
+            pendingReports={counts.pendingReports}
+            approvedReports={counts.approvedReports}
+            rejectedReports={counts.rejectedReports}
+            openDisputes={counts.openDisputes}
+            resolvedDisputes={counts.resolvedDisputes}
+            pendingResolutions={counts.pendingResolutions}
+            totalDisputedPaise={counts.totalDisputedPaise}
+            openDisputedPaise={counts.openDisputedPaise}
+            resolvedDisputedPaise={counts.resolvedDisputedPaise}
+          />
+        </section>
+      </div>
+    </ReportShell>
+  );
 }

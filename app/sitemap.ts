@@ -20,7 +20,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: "/login", priority: 0.6, changeFrequency: "yearly" as const },
     { url: "/admin-login", priority: 0.3, changeFrequency: "yearly" as const },
     { url: "/forgot-password", priority: 0.3, changeFrequency: "yearly" as const },
-    { url: "/health", priority: 0.4, changeFrequency: "daily" as const },
     { url: "/privacy", priority: 0.5, changeFrequency: "yearly" as const },
     { url: "/terms", priority: 0.5, changeFrequency: "yearly" as const },
     { url: "/disclaimer", priority: 0.5, changeFrequency: "yearly" as const },

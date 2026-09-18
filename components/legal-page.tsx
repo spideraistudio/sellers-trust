@@ -8,16 +8,16 @@ export function LegalPage({ title, path, effective, children }: { title: string;
       <BreadcrumbsJsonLd items={[{ name: title, path }]} />
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-5xl items-center gap-3 px-5 py-4">
-          <Link href="/" className="grid size-10 place-items-center rounded-xl bg-[#15388c]/5 text-[#15388c] transition hover:bg-[#15388c] hover:text-white" aria-label="Back to home">
+          <Link href="/home" className="grid size-10 place-items-center rounded-xl bg-[#15388c]/5 text-[#15388c] transition hover:bg-[#15388c] hover:text-white" aria-label="Back to home">
             <ArrowLeft className="size-5" />
           </Link>
           <ShieldCheck className="size-6 text-emerald-700" />
-          <Link href="/" className="font-semibold text-slate-900 transition hover:text-[#15388c]">Sellers Trust Network</Link>
+          <Link href="/home" className="font-semibold text-slate-900 transition hover:text-[#15388c]">Sellers Trust Network</Link>
         </div>
         {/* Visual breadcrumb trail */}
         <nav aria-label="Breadcrumb" className="border-t border-slate-100 bg-slate-50">
           <ol className="mx-auto flex max-w-5xl items-center gap-1.5 px-5 py-2.5 text-xs text-slate-500">
-            <li><Link href="/" className="flex items-center gap-1 transition hover:text-[#15388c]"><Home className="size-3" />Home</Link></li>
+            <li><Link href="/home" className="flex items-center gap-1 transition hover:text-[#15388c]"><Home className="size-3" />Home</Link></li>
             <li aria-hidden="true"><ChevronRight className="size-3 text-slate-300" /></li>
             <li className="font-medium text-slate-700">{title}</li>
           </ol>

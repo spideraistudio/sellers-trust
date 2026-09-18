@@ -177,6 +177,20 @@ async function evalExpr(expr:string,ctx:Ctx,row:Row,db:Db,blobs:unknown[],sessio
     const vals=Object.values(first);
     return vals.length===1?vals[0]:first;
   }
+  // SQLite/D1 CAST(expr AS TYPE) — used when integer ids were stringified for legal holds.
+  // On Mongo, ids are already strings/ObjectIds; CAST(... AS TEXT) just normalizes via asId.
+  const cast=e.match(/^CAST\s*\(([\s\S]+)\s+AS\s+(\w+)\s*\)$/i);
+  if(cast){
+    const v=await evalExpr(cast[1],ctx,row,db,blobs,session);
+    const t=cast[2].toUpperCase();
+    if(t==="TEXT"||t==="VARCHAR"||t==="CHAR"||t==="STRING")return v==null||v===undefined?null:String(asId(v)??"");
+    if(t==="INTEGER"||t==="INT"||t==="BIGINT"||t==="REAL"||t==="NUMERIC"||t==="DECIMAL"||t==="FLOAT"||t==="DOUBLE"){
+      if(v==null||v===undefined||v==="")return null;
+      const n=Number(v);
+      return Number.isFinite(n)?n:null;
+    }
+    return v;
+  }
   const fn=e.match(/^(COUNT|SUM|AVG|MAX|MIN|COALESCE|GREATEST|LEAST|LOWER|UPPER|LENGTH|SUBSTR|SUBSTRING|CONCAT|IFNULL|IF|CASE)\b/i);
   if(fn){
     const name=fn[1].toUpperCase();
@@ -190,6 +204,7 @@ async function evalExpr(expr:string,ctx:Ctx,row:Row,db:Db,blobs:unknown[],sessio
     if(name==="LEAST")return Math.min(...await mapNums(args,ctx,row,db,blobs,session));
     if(name==="LOWER")return String(await evalExpr(args[0],ctx,row,db,blobs,session)??"").toLowerCase();
     if(name==="UPPER")return String(await evalExpr(args[0],ctx,row,db,blobs,session)??"").toUpperCase();
+    if(name==="LENGTH")return String(await evalExpr(args[0],ctx,row,db,blobs,session)??"").length;
     if(name==="CONCAT")return (await Promise.all(args.map(a=>evalExpr(a,ctx,row,db,blobs,session)))).map(v=>v??"").join("");
     if(name==="SUBSTR"||name==="SUBSTRING"){
       const s=String(await evalExpr(args[0],ctx,row,db,blobs,session)??"");
@@ -201,10 +216,14 @@ async function evalExpr(expr:string,ctx:Ctx,row:Row,db:Db,blobs:unknown[],sessio
       const c=await evalBool(args[0],ctx,row,db,blobs,session);
       return evalExpr(c?args[1]:args[2],ctx,row,db,blobs,session);
     }
+    // Per-row aggregate seed values. The grouping pass reduces these.
+    if(name==="SUM"||name==="AVG"||name==="MAX"||name==="MIN"){
+      return evalExpr(args[0]??"NULL",ctx,row,db,blobs,session);
+    }
     if(name==="COUNT"){
       if(!args[0]||args[0].trim()==="*" )return 1;
       if(/^DISTINCT\s+/i.test(args[0]))return resolve(args[0].replace(/^DISTINCT\s+/i,""),ctx,row)==null?0:1;
-      return resolve(args[0],ctx,row)==null?0:1;
+      return (await evalExpr(args[0],ctx,row,db,blobs,session))==null?0:1;
     }
   }
   const plus=splitTop(e,"+");
@@ -227,9 +246,20 @@ async function mapNums(args:string[],ctx:Ctx,row:Row,db:Db,blobs:unknown[],sessi
   return Promise.all(args.map(async a=>Number(await evalExpr(a,ctx,row,db,blobs,session)||0)));
 }
 async function evalCase(expr:string,ctx:Ctx,row:Row,db:Db,blobs:unknown[],session?:ClientSession):Promise<unknown>{
-  const body=expr.replace(/^CASE\s+/i,"").replace(/\s+END$/i,"");
-  const bits=splitTop(body,"WHEN");
+  const body=expr.replace(/^CASE\s+/i,"").replace(/\s+END$/i,"").trim();
+  // Support both searched CASE (WHEN cond THEN ...) and simple CASE (expr WHEN val THEN ...).
+  let subject:string|null=null;
+  let work=body;
+  if(!/^WHEN\b/i.test(body)){
+    const idx=body.search(/\sWHEN\b/i);
+    if(idx>0){
+      subject=body.slice(0,idx).trim();
+      work=body.slice(idx).trim();
+    }
+  }
+  const bits=splitTop(work,"WHEN");
   let elseVal:string|undefined;
+  const subjectValue=subject?await evalExpr(subject,ctx,row,db,blobs,session):null;
   for(const bit of bits){
     if(!bit.trim())continue;
     if(/^ELSE\b/i.test(bit.trim()) && !/\bWHEN\b/i.test(bit)){elseVal=bit.replace(/^ELSE\s+/i,"");continue;}
@@ -237,12 +267,19 @@ async function evalCase(expr:string,ctx:Ctx,row:Row,db:Db,blobs:unknown[],sessio
     if(thenAt.length<2)continue;
     const thenParts=splitTop(thenAt.slice(1).join(" THEN "),"ELSE");
     if(thenParts[1]!==undefined)elseVal=thenParts[1];
-    if(await evalBool(thenAt[0],ctx,row,db,blobs,session))return evalExpr(thenParts[0],ctx,row,db,blobs,session);
+    const matched=subject
+      ? cmp(subjectValue,"=",await evalExpr(thenAt[0],ctx,row,db,blobs,session))
+      : await evalBool(thenAt[0],ctx,row,db,blobs,session);
+    if(matched)return evalExpr(thenParts[0],ctx,row,db,blobs,session);
   }
   return elseVal!==undefined?evalExpr(elseVal,ctx,row,db,blobs,session):null;
 }
 async function evalBool(expr:string,ctx:Ctx,row:Row,db:Db,blobs:unknown[],session?:ClientSession):Promise<boolean>{
-  const e=expr.trim();
+  let e=expr.trim();
+  // Unwrap a fully-parenthesised group before splitting. splitTop only sees
+  // operators at depth 0, so "(a AND b)" yields no AND/OR and no comparison,
+  // and would otherwise fall through to resolve() and read as false.
+  while(e.startsWith("(") && matchingParen(e)===e.length-1 && !/^\(\s*SELECT\b/i.test(e)) e=e.slice(1,-1).trim();
   const ors=splitTop(e,"OR");
   if(ors.length>1){for(const p of ors)if(await evalBool(p,ctx,row,db,blobs,session))return true;return false;}
   const ands=splitTop(e,"AND");
@@ -420,7 +457,7 @@ function parseSelect(sql:string){
   const whereParts=splitTop(groupParts[0],"WHERE");
   const where=whereParts[1]||"";
   const fromParts=splitTop(whereParts[0],"FROM");
-  if(fromParts.length<2)return {cols:parseCols(fromParts[0]),from:null as From|null,where:"",group:"",order:orderBy,limit,union:undefined as string[]|undefined};
+  if(fromParts.length<2)return {cols:parseCols(fromParts[0]),from:null as From|null,where,group:"",order:orderBy,limit,union:undefined as string[]|undefined};
   return {cols:parseCols(fromParts[0]),from:parseFrom(fromParts.slice(1).join(" FROM ")),where,group,order:orderBy,limit,union:undefined as string[]|undefined};
 }
 function parseOrder(order:string){
@@ -437,7 +474,6 @@ async function runSelect(sql:string,db:Db,blobs:unknown[],session?:ClientSession
   if(parsed.union){
     const parts=await Promise.all(parsed.union.map(u=>runSelect(/^SELECT/i.test(u)?u:`SELECT ${u}`,db,blobs,session,outer)));
     let rows=parts.flatMap(p=>p.results);
-    const order=parseSelect(`SELECT * FROM x ${s.match(/ORDER BY[\s\S]+$/i)?.[0]||""}`);
     if(parsed.union){
       const orderMatch=s.match(/ORDER BY\s+([\s\S]+?)(?:\s+LIMIT\s+(\d+))?$/i);
       if(orderMatch){
@@ -451,10 +487,12 @@ async function runSelect(sql:string,db:Db,blobs:unknown[],session?:ClientSession
   if(!parsed.from){
     const ctx=outer||{};
     const row=outer?flatten(outer,Object.keys(outer)[0]||""):{};
+    // INSERT…SELECT ? WHERE (subquery) and similar SQLite forms have no FROM clause.
+    if(parsed.where && !(await evalBool(parsed.where,ctx,row,db,blobs,session)))return {results:[],meta:{changes:0}};
     const projected=await project(parsed.cols,ctx,row,db,blobs,session);
     return {results:[projected],meta:{changes:0}};
   }
-  let ctxs=await joinRows(parsed.from,db,blobs,session,outer);
+  const ctxs=await joinRows(parsed.from,db,blobs,session,outer);
   const out:Row[]=[];
   for(const ctx of ctxs){
     const merged=outer?{...outer,...ctx}:ctx;
@@ -485,9 +523,9 @@ async function runSelect(sql:string,db:Db,blobs:unknown[],session?:ClientSession
           base[col.alias]=set.size;
         }else if(/^COUNT\s*\(/i.test(e))base[col.alias]=g.length;
         else if(/^SUM\s*\(/i.test(e))base[col.alias]=g.reduce((s,r)=>s+Number(r[col.alias]||0),0);
-        else if(/^AVG\s*\(/i.test(e))base[col.alias]=g.reduce((s,r)=>s+Number(r[col.alias]||0),0)/g.length;
-        else if(/^MAX\s*\(/i.test(e))base[col.alias]=Math.max(...g.map(r=>Number(r[col.alias]||0)));
-        else if(/^MIN\s*\(/i.test(e))base[col.alias]=Math.min(...g.map(r=>Number(r[col.alias]||0)));
+        else if(/^AVG\s*\(/i.test(e))base[col.alias]=g.length?g.reduce((s,r)=>s+Number(r[col.alias]||0),0)/g.length:null;
+        else if(/^MAX\s*\(/i.test(e))base[col.alias]=g.length?Math.max(...g.map(r=>Number(r[col.alias]||0))):null;
+        else if(/^MIN\s*\(/i.test(e))base[col.alias]=g.length?Math.min(...g.map(r=>Number(r[col.alias]||0))):null;
       }
       aggregated.push(base);
     }
@@ -516,7 +554,7 @@ async function runInsert(sql:string,db:Db,blobs:unknown[],session?:ClientSession
   const s=strip(sql);
   const conflict=s.match(/\sON CONFLICT\s*(?:\(([^)]+)\))?\s+(DO NOTHING|DO UPDATE SET\s+([\s\S]+))$/i);
   const returning=s.match(/\sRETURNING\s+(\w+)\s*$/i);
-  let core=s.replace(/\sON CONFLICT[\s\S]+$/i,"").replace(/\sRETURNING\s+\w+\s*$/i,"");
+  const core=s.replace(/\sON CONFLICT[\s\S]+$/i,"").replace(/\sRETURNING\s+\w+\s*$/i,"");
   const ins=core.match(/^INSERT\s+INTO\s+([\w]+)\s*\(([^)]+)\)\s+(VALUES|SELECT)\s*([\s\S]+)$/i);
   if(!ins)throw new Error(`Unsupported INSERT: ${s.slice(0,120)}`);
   const table=ins[1];
@@ -524,7 +562,6 @@ async function runInsert(sql:string,db:Db,blobs:unknown[],session?:ClientSession
   let values:unknown[][]=[];
   if(/^VALUES$/i.test(ins[3])){
     const tuples=ins[4].trim();
-    const inner=tuples.startsWith("(")?splitTop(tuples.replace(/^\(/,"").replace(/\)$/,""),"),("):[tuples];
     // simpler: single tuple
     const one=tuples.match(/^\(([\s\S]+)\)$/);
     const items=splitList(one?one[1]:tuples);

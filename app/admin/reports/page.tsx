@@ -1,14 +1,154 @@
-// Server component (force-dynamic): Date.now()+1 provides a default "before"
-// cursor for pagination and is evaluated per-request on the server (correct).
-// The react-hooks/purity rule is a false positive for server components.
-/* eslint-disable react-hooks/purity */
 import { redirect } from "next/navigation";
 import { requireChatGPTUser } from "@/app/chatgpt-auth";
 import { isConfiguredAdmin, parseMemberId } from "@/lib/member-data";
 import { adminReportList } from "@/lib/report-list";
-import { ReportCards } from "@/components/report-cards";
 import { ReportShell } from "@/components/report-shell";
-export const dynamic="force-dynamic";
-export default async function Page({searchParams}:{searchParams:Promise<{before?:string;q?:string;status?:string;category?:string;from?:string;to?:string;memberId?:string;disputeStatus?:string}>}){const user=await requireChatGPTUser('/admin/reports');if(!isConfiguredAdmin(user.email))redirect('/join');const params=await searchParams,status=String(params.status||"pending"),category=String(params.category||""),q=String(params.q||"").trim(),from=/^\d{4}-\d{2}-\d{2}$/.test(String(params.from||""))?new Date(`${params.from}T00:00:00Z`).valueOf():0,to=/^\d{4}-\d{2}-\d{2}$/.test(String(params.to||""))?new Date(`${params.to}T23:59:59.999Z`).valueOf():0,memberId=parseMemberId(params.memberId),disputeStatus=["reported","resolved"].includes(String(params.disputeStatus||""))?String(params.disputeStatus):"";
- const {reports,next}=await adminReportList({q,status,category,from,to,memberId:memberId??undefined,disputeStatus},Number(params.before)||Date.now()+1);const query=new URLSearchParams(Object.entries({q,status,category,from:params.from||"",to:params.to||"",memberId:memberId?String(memberId):"",disputeStatus}).filter(([,v])=>v) as [string,string][]);
- return <ReportShell admin title="Seller reports" description="Review pending submissions or filter the full report history by company, GSTIN, seller, status, category and date.">{memberId&&<div className="mb-5 flex items-center justify-between rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900"><strong>Company dispute filter: {disputeStatus||"all"}</strong><a href="/admin/reports" className="font-semibold underline">Clear company filter</a></div>}<div className="mb-5 flex flex-wrap justify-end"><a href="/api/admin/export?type=reports" className="rounded-lg border border-emerald-200 bg-white px-4 py-2 text-sm font-semibold text-emerald-800">Export approved reports CSV</a></div><form method="get" className="mb-6 grid gap-3 rounded-2xl border bg-white p-4 md:grid-cols-6">{memberId&&<><input type="hidden" name="memberId" value={memberId}/><input type="hidden" name="disputeStatus" value={disputeStatus}/></>}<input name="q" defaultValue={q} placeholder="Seller, GSTIN, company or Member ID" className="h-11 rounded-lg border px-3 md:col-span-2"/><select name="status" defaultValue={status} className="h-11 rounded-lg border bg-white px-3"><option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option><option value="superseded">Superseded</option></select><select name="category" defaultValue={category} className="h-11 rounded-lg border bg-white px-3"><option value="">All categories</option><option value="agriculture">Agriculture</option><option value="other">Other</option></select><input type="date" name="from" defaultValue={params.from} aria-label="Submitted from" className="h-11 rounded-lg border px-3"/><input type="date" name="to" defaultValue={params.to} aria-label="Submitted to" className="h-11 rounded-lg border px-3"/><div className="flex gap-2 md:col-span-6"><button className="rounded-lg bg-[#15388c] px-5 py-2 text-sm font-semibold text-white">Apply filters</button><a href="/admin/reports" className="rounded-lg border px-5 py-2 text-sm font-semibold">Clear</a></div></form>{reports.length?<ReportCards reports={reports} admin/>:<p className="rounded-xl border bg-white p-6">No reports match these filters.</p>}{next&&<a href={`/admin/reports?${query.toString()}&before=${next}`} className="mt-5 inline-block underline">Older reports</a>}</ReportShell>;}
+import {
+  SearchToolbar,
+  FilterField,
+  FilterInput,
+  FilterSelect,
+} from "@/components/filter-bar";
+import {
+  LIST_PAGE_SIZE,
+  ListPagination,
+  parseListPage,
+} from "@/components/list-pagination";
+import { AdminReportsPanel } from "@/components/admin-reports-panel";
+
+export const dynamic = "force-dynamic";
+
+export default async function Page({
+  searchParams,
+}: {
+  searchParams: Promise<{
+    page?: string;
+    q?: string;
+    status?: string;
+    category?: string;
+    from?: string;
+    to?: string;
+    memberId?: string;
+    disputeStatus?: string;
+  }>;
+}) {
+  const user = await requireChatGPTUser("/admin/reports");
+  if (!isConfiguredAdmin(user.email)) redirect("/join");
+  const params = await searchParams;
+  const status = String(params.status || "pending");
+  const category = String(params.category || "");
+  const q = String(params.q || "").trim();
+  const page = parseListPage(params.page);
+  const from = /^\d{4}-\d{2}-\d{2}$/.test(String(params.from || ""))
+    ? new Date(`${params.from}T00:00:00Z`).valueOf()
+    : 0;
+  const to = /^\d{4}-\d{2}-\d{2}$/.test(String(params.to || ""))
+    ? new Date(`${params.to}T23:59:59.999Z`).valueOf()
+    : 0;
+  const memberId = parseMemberId(params.memberId);
+  const disputeStatus = ["reported", "resolved"].includes(String(params.disputeStatus || ""))
+    ? String(params.disputeStatus)
+    : "";
+
+  const { reports, total } = await adminReportList(
+    {
+      q,
+      status,
+      category,
+      from,
+      to,
+      memberId: memberId ?? undefined,
+      disputeStatus,
+    },
+    { page, pageSize: LIST_PAGE_SIZE },
+  );
+
+  const filterParams = {
+    q: q || undefined,
+    status: status || undefined,
+    category: category || undefined,
+    from: params.from || undefined,
+    to: params.to || undefined,
+    memberId: memberId ? String(memberId) : undefined,
+    disputeStatus: disputeStatus || undefined,
+  };
+
+  const activeFilterCount = [
+    status && status !== "pending" ? status : "",
+    category,
+    params.from,
+    params.to,
+  ].filter(Boolean).length;
+
+  const filters = (
+    <SearchToolbar
+      action="/admin/reports"
+      searchDefault={q}
+      searchPlaceholder="Search..."
+      clearHref="/admin/reports"
+      exportHref="/api/admin/export?type=reports"
+      activeFilterCount={activeFilterCount}
+      hiddenFields={
+        memberId ? (
+          <>
+            <input type="hidden" name="memberId" value={memberId} />
+            <input type="hidden" name="disputeStatus" value={disputeStatus} />
+          </>
+        ) : null
+      }
+    >
+      <FilterField label="Status">
+        <FilterSelect name="status" defaultValue={status}>
+          <option value="pending">Pending</option>
+          <option value="approved">Approved</option>
+          <option value="rejected">Rejected</option>
+          <option value="superseded">Superseded</option>
+          <option value="all">All statuses</option>
+        </FilterSelect>
+      </FilterField>
+      <FilterField label="Category">
+        <FilterSelect name="category" defaultValue={category}>
+          <option value="">All categories</option>
+          <option value="agriculture">Agriculture</option>
+          <option value="other">Other</option>
+        </FilterSelect>
+      </FilterField>
+      <FilterField label="From date">
+        <FilterInput type="date" name="from" defaultValue={params.from} />
+      </FilterField>
+      <FilterField label="To date">
+        <FilterInput type="date" name="to" defaultValue={params.to} />
+      </FilterField>
+    </SearchToolbar>
+  );
+
+  return (
+    <ReportShell
+      admin
+      title="Seller reports"
+      description="Review pending submissions or filter the full report history."
+      filters={filters}
+    >
+      <AdminReportsPanel
+        reports={reports}
+        total={total}
+        companyFilter={
+          memberId ? (
+            <a href="/admin/reports" className="text-[13px] font-semibold text-[#15388c] underline">
+              Clear company filter
+            </a>
+          ) : null
+        }
+        pagination={
+          <ListPagination
+            basePath="/admin/reports"
+            params={filterParams}
+            page={page}
+            total={total}
+            pageSize={LIST_PAGE_SIZE}
+          />
+        }
+      />
+    </ReportShell>
+  );
+}

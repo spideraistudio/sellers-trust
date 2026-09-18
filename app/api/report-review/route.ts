@@ -45,5 +45,10 @@ export async function POST(request: Request) {
     const result = await db.batch(statements);
     if(!result[result.length-2].meta.changes)return reply({ error: "This report was already reviewed. Refresh the page." }, 409);
     const correction=Boolean(report.identity_change);await notifyMember(report.member_id,{type:correction?`seller_correction_${status}`:`report_${status}`,title:correction?`Seller correction ${status}`:`Report ${status}`,message:cleanNotes?`${report.firm_name}: ${cleanNotes}`:`${report.firm_name}: ${status}.`,href:"/member/reports"});return reply({ ok: true });
-  } catch { return reply({ error: "Unable to save review. Please try again." }, 500); }
+  } catch (error) {
+    console.error("[report-review]", error);
+    const code = error && typeof error === "object" && "code" in error ? String((error as { code?: unknown }).code) : "";
+    if (code === "GUARD_FAILED") return reply({ error: "This report was already reviewed. Refresh the page." }, 409);
+    return reply({ error: "Unable to save review. Please try again." }, 500);
+  }
 }

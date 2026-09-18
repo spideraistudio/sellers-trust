@@ -18,7 +18,7 @@ export default function AboutPage() {
       <section className="gradient-mesh relative overflow-hidden">
         <div className="pointer-events-none absolute -right-20 top-10 size-72 rounded-full bg-blue-400/20 blur-3xl animate-float-slow" />
         <nav className="relative z-10 mx-auto flex max-w-5xl items-center justify-between px-5 py-5">
-          <Link href="/" className="flex items-center gap-3">
+          <Link href="/home" className="flex items-center gap-3">
             <span className="grid size-11 place-items-center rounded-xl bg-white/10 ring-1 ring-white/20 backdrop-blur-md">
               <BrandLogo compact className="size-9" />
             </span>

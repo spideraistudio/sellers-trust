@@ -5,7 +5,7 @@ import { notifyMember } from "./notifications";
 export type RegistrationInput={authUserId:string;companyName:string;address:string;taluka:string;district:string;state:string;pincode:string;gstin:string;responsiblePersonName:string;mobileNumber:string;email:string;category:"agriculture"|"other";otherCategory?:string|null};
 export function isConfiguredAdmin(email:string){return (env.ADMIN_EMAILS||"").split(",").map(v=>v.trim().toLowerCase()).filter(Boolean).includes(email.toLowerCase());}
 // Member row shape produced by memberFromRow (camelCase projection of the
-// snake_case members table). The input row is dynamically shaped by node-pg.
+// snake_case members collection). The input row is dynamically shaped by sql-mongo.
 type MemberRow = Record<string, unknown>;
 export type MemberId = string | number;
 export const MEMBER_LOGIN_ID_PATTERN=/^MEM[0-9A-F]{6,}$/i;

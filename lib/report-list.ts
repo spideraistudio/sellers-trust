@@ -49,20 +49,48 @@ export async function reportList(member:{id:number|string;category:string}|null,
 }
 
 export type AdminReportFilters={q?:string;status?:string;category?:string;from?:number;to?:number;memberId?:number|string;disputeStatus?:string};
-export async function adminReportList(filters:AdminReportFilters,before:number){
+
+export type AdminReportListResult={
+  reports:ReportView[];
+  total:number;
+  page:number;
+  pageSize:number;
+  totalPages:number;
+  /** @deprecated cursor pagination — prefer page */
+  next:number|null;
+};
+
+function escapeRegex(value:string){
+  return value.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+}
+
+export async function adminReportList(
+  filters:AdminReportFilters,
+  opts:number|{page?:number;pageSize?:number;before?:number}={}
+):Promise<AdminReportListResult>{
+  // Back-compat: second arg used to be `before` cursor timestamp
+  const options=typeof opts==="number"?{before:opts,page:1,pageSize:10}:opts;
+  const page=Math.max(1,Number(options.page)||1);
+  const pageSize=Math.min(50,Math.max(1,Number(options.pageSize)||10));
+  const before=typeof options.before==="number"&&options.before>0?options.before:undefined;
+
   const db=await mongoDb();
-  const match:Record<string,unknown>={$and:[{$or:[{created_at:{$lt:before}},{created_at:null},{created_at:{$exists:false}}]}]};
-  const and=match.$and as Record<string,unknown>[];
-  const status=["pending","approved","rejected","superseded"].includes(filters.status||"")?filters.status!:"pending";
-  and.push(status==="pending"?pendingStatus():{status});
-  if(["agriculture","other"].includes(filters.category||""))and.push({category:filters.category});
+  const and:Record<string,unknown>[]=[];
+  if(before!=null)and.push({$or:[{created_at:{$lt:before}},{created_at:null},{created_at:{$exists:false}}]});
+  const statusRaw = String(filters.status || "pending");
+  const status = ["pending", "approved", "rejected", "superseded", "all"].includes(statusRaw)
+    ? statusRaw
+    : "pending";
+  if (status !== "all") {
+    and.push(status === "pending" ? pendingStatus() : { status });
+  }  if(["agriculture","other"].includes(filters.category||""))and.push({category:filters.category});
   if(filters.memberId)and.push({$or:[{member_id:filters.memberId},{member_id:String(filters.memberId)}]});
-  if(filters.disputeStatus==="reported")and.push({dispute:1});
-  if(filters.disputeStatus==="resolved")and.push({dispute:1,dispute_resolved:1});
+  if(filters.disputeStatus==="reported")and.push({dispute:{$in:[1,true,"1"]}});
+  if(filters.disputeStatus==="resolved")and.push({dispute:{$in:[1,true,"1"]},dispute_resolved:{$in:[1,true,"1"]}});
   if(filters.from)and.push({created_at:{$gte:filters.from}});
   if(filters.to)and.push({created_at:{$lte:filters.to}});
-  const [docs,members,sellers,pendingResolutions]=await Promise.all([
-    db.collection("seller_reports").find(match).sort({created_at:-1,_id:-1}).limit(51).toArray(),
+
+  const [members,sellers,pendingResolutions]=await Promise.all([
     db.collection("members").find({}).project({company_name:1,login_id:1,mobile_number:1}).toArray(),
     db.collection("sellers").find({}).toArray(),
     db.collection("dispute_resolution_requests").find({status:"pending"}).project({report_id:1}).toArray(),
@@ -70,26 +98,31 @@ export async function adminReportList(filters:AdminReportFilters,before:number){
   const membersById=new Map(members.map(m=>[asKey(m._id),m]));
   const sellersById=new Map(sellers.map(s=>[asKey(s._id??s.id),s]));
   const pendingByReport=new Set(pendingResolutions.map(r=>asKey(r.report_id)));
-  let rows=docs;
+
   if(filters.q){
     const query=filters.q.trim().toUpperCase();
     if(/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/.test(query)){
       const keys=new Set([identifierKey("agriculture","gst",query),identifierKey("other","gst",query)]);
-      rows=rows.filter(row=>{
-        const seller=sellersById.get(asKey(row.seller_id))||sellersById.get(asKey(row._id));
-        return seller?keys.has(String(seller.gst_lookup||"")):false;
-      });
+      const sellerIds=[...sellersById.entries()].filter(([,s])=>keys.has(String(s.gst_lookup||""))).map(([id])=>id);
+      and.push({$or:[{seller_id:{$in:sellerIds}},{_id:{$in:sellerIds}}]});
     }else{
-      const like=filters.q.trim().toLowerCase();
-      rows=rows.filter(row=>{
-        const member=membersById.get(asKey(row.member_id));
-        return `${row.firm_name||""} ${member?.company_name||""} ${member?.login_id||""}`.toLowerCase().includes(like);
-      });
+      const like=escapeRegex(filters.q.trim());
+      const memberIds=members.filter(m=>`${m.company_name||""} ${m.login_id||""}`.toLowerCase().includes(filters.q!.trim().toLowerCase())).map(m=>asKey(m._id));
+      and.push({$or:[
+        {firm_name:{$regex:like,$options:"i"}},
+        {member_id:{$in:memberIds}},
+      ]});
     }
   }
-  const page=rows.slice(0,50);
+
+  const match=and.length?{$and:and}:{};
+  const total=await db.collection("seller_reports").countDocuments(match);
+  const totalPages=Math.max(1,Math.ceil(total/pageSize));
+  const safePage=Math.min(page,totalPages);
+  const docs=await db.collection("seller_reports").find(match).sort({created_at:-1,_id:-1}).skip((safePage-1)*pageSize).limit(pageSize).toArray();
+
   const reports:ReportView[]=[];
-  for(const row of page){
+  for(const row of docs){
     const member=membersById.get(asKey(row.member_id))||membersById.get(asKey(row.person_name));
     const seller=sellersById.get(asKey(row.seller_id))||sellersById.get(asKey(row._id));
     const documents=await db.collection("report_documents").find({report_id:asKey(row._id??row.id)}).project({id:1,name:1,_id:1}).toArray();
@@ -124,5 +157,14 @@ export async function adminReportList(filters:AdminReportFilters,before:number){
     reports[reports.length-1].documents=documents.map(doc=>({id:asKey(doc.id??doc._id),name:String(doc.name||"Document")}));
     reports[reports.length-1].resolution_requests=[];
   }
-  return {reports,next:rows.length>50?Number(page[page.length-1].created_at||0)||null:null};
+
+  const lastCreated=reports.length?Number(reports[reports.length-1].created_at)||null:null;
+  return {
+    reports,
+    total,
+    page:safePage,
+    pageSize,
+    totalPages,
+    next:safePage<totalPages&&lastCreated?lastCreated:null,
+  };
 }

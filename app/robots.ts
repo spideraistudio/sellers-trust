@@ -10,7 +10,7 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: "*",
         allow: "/",
-        disallow: ["/admin/", "/member/", "/api/"],
+        disallow: ["/admin/", "/member/", "/api/", "/home"],
       },
     ],
     sitemap: "https://sellerstrustnetwork.com/sitemap.xml",

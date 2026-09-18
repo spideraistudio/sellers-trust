@@ -1,6 +1,11 @@
 import { check, index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 import { sql } from "drizzle-orm";
 
+/**
+ * Legacy Drizzle/SQLite schema kept only for documentation and `drizzle-kit`
+ * type generation. Runtime storage is MongoDB via `lib/sql-mongo.ts` +
+ * `MONGODB_URI`. Do not treat these tables as a live D1/SQLite database.
+ */
 export const adminCredentials = sqliteTable("admin_credentials", {
   loginId: text("login_id").primaryKey(),
   passwordHash: text("password_hash").notNull(),
@@ -8,7 +13,7 @@ export const adminCredentials = sqliteTable("admin_credentials", {
   updatedAt: integer("updated_at").notNull(),
 });
 
-// Insert/check/delete inside one D1 batch to abort stale or concurrent mutations.
+// Insert/check/delete inside one Mongo batch to abort stale or concurrent mutations.
 export const operationGuards = sqliteTable("operation_guards", {
   id: text("id").primaryKey(),
   valid: integer("valid").notNull(),

@@ -1,4 +1,4 @@
-import type { Member } from "@/db/schema";
+import type { Member } from "@/lib/member-data";
 
 // The persisted membership is authoritative. Never accept a category from a URL
 // or form as authorization. 'other' is a request, never a shared data partition.

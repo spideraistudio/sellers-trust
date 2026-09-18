@@ -20,7 +20,7 @@ export default async function Page({searchParams}:{searchParams:Promise<{returnT
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-200/50">
         {/* Header band */}
         <div className="gradient-mesh px-8 py-7">
-          <div className="flex items-center gap-3">
+          <a href="/home" className="flex items-center gap-3">
             <span className="grid size-11 place-items-center rounded-xl bg-white/10 ring-1 ring-white/20 backdrop-blur-md">
               <BrandLogo compact className="size-9" />
             </span>
@@ -28,7 +28,7 @@ export default async function Page({searchParams}:{searchParams:Promise<{returnT
               <p className="text-sm font-semibold text-amber-200">Sellers Trust Network</p>
               <p className="text-xs text-blue-100">Administrator access</p>
             </div>
-          </div>
+          </a>
         </div>
 
         {/* Form body */}

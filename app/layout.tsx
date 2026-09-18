@@ -38,9 +38,6 @@ export const metadata: Metadata = {
     statusBarStyle: "default",
   },
   formatDetection: { telephone: false, email: false, address: false },
-  other: {
-    "codex-preview": "development",
-  },
   icons: {
     icon: [
       { url: "/sellers-trust-network-mark.png", sizes: "192x192" },

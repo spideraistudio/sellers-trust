@@ -19,7 +19,7 @@ const faqs = [
         a: "Submit a company registration on the Join page with your GSTIN, business details, and location. The administrator manually verifies each application and, after approval, shares your Member ID and temporary password.",
       },
       {
-        q: "Is a ChatGPT account required?",
+        q: "Is a third-party account required?",
         a: "No. Membership uses a separate Member ID and password issued by the administrator. No third-party account is needed to register or sign in.",
       },
       {
@@ -148,7 +148,7 @@ export default function FaqPage() {
       <header className="gradient-mesh relative overflow-hidden">
         <div className="pointer-events-none absolute -right-20 top-10 size-72 rounded-full bg-blue-400/20 blur-3xl" />
         <nav className="relative z-10 mx-auto flex max-w-5xl items-center justify-between px-5 py-5">
-          <Link href="/" className="flex items-center gap-3">
+          <Link href="/home" className="flex items-center gap-3">
             <span className="grid size-11 place-items-center rounded-xl bg-white/10 ring-1 ring-white/20 backdrop-blur-md">
               <BrandLogo compact className="size-9" />
             </span>
