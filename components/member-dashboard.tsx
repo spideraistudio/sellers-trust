@@ -8,7 +8,6 @@ import {
   LockKeyhole,
   Search,
 } from "lucide-react";
-import { SellerSearch } from "@/components/seller-search";
 import { useWorkspacePageMeta } from "@/components/workspace-shell";
 import Link from "next/link";
 
@@ -27,6 +26,7 @@ export type DashboardProfile = {
   categoryLabel: string | null;
   requestedCategory: string | null;
   isPilot?: boolean;
+  searchEnabled?: boolean;
 };
 
 export function MemberDashboard({
@@ -130,7 +130,49 @@ export function MemberDashboard({
       )}
 
       {profile.categoryLabel && !preview && (
-        <SellerSearch prominent categoryLabel={profile.categoryLabel} />
+        <Link
+          href="/member/sellers"
+          className={`mt-6 flex items-center justify-between gap-3 rounded-[12px] border px-4 py-3.5 transition ${
+            profile.searchEnabled === false
+              ? "border-amber-200 bg-amber-50/70 hover:border-amber-300"
+              : "border-slate-200 bg-white hover:border-blue-300 hover:bg-slate-50"
+          }`}
+        >
+          <div className="flex items-center gap-3">
+            <span
+              className={`grid size-10 place-items-center rounded-[12px] ${
+                profile.searchEnabled === false
+                  ? "bg-amber-100 text-amber-800"
+                  : "bg-[#15388c]/10 text-[#15388c]"
+              }`}
+            >
+              {profile.searchEnabled === false ? (
+                <LockKeyhole className="size-5" />
+              ) : (
+                <Search className="size-5" />
+              )}
+            </span>
+            <div>
+              <p className="text-[13px] font-semibold text-slate-900">
+                {profile.searchEnabled === false
+                  ? "Seller search disabled"
+                  : "Search sellers by GSTIN"}
+              </p>
+              <p className="text-[12px] text-slate-500">
+                {profile.searchEnabled === false
+                  ? "Contact the administrator to enable search access."
+                  : `Category: ${profile.categoryLabel}`}
+              </p>
+            </div>
+          </div>
+          <span
+            className={`text-[12px] font-semibold ${
+              profile.searchEnabled === false ? "text-amber-800" : "text-[#15388c]"
+            }`}
+          >
+            {profile.searchEnabled === false ? "View →" : "Open →"}
+          </span>
+        </Link>
       )}
 
       <section className="mt-8">

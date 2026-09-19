@@ -1,21 +1,432 @@
 "use client";
-import { useState } from "react";
-import { Button } from "./ui/button";
-import { ReportCards,type ReportView } from "./report-cards";
+
+import { useState, type FormEvent, type ReactNode } from "react";
+import {
+  AlertTriangle,
+  Building2,
+  Search,
+  ShieldCheck,
+  Star,
+} from "lucide-react";
 import { readJsonResponse } from "@/lib/client-response";
-import { Search,ShieldCheck,Star,Building2,AlertTriangle } from "lucide-react";
-import { IndiaWireframeMap } from "./india-wireframe-map";
-type Seller={firm_name:string;taluka:string;district:string;state:string;pincode?:string;gstin:string;report_count:number;average_rating:number;reporting_companies:number;disputes:number;open_disputes:number;resolved_disputes:number;reported_amount_paise:number;resolved_amount_paise:number;legal_count:number;latest_reviewed_at:number;under_review:boolean};
-export function SellerSearch({prominent=false,categoryLabel}:{prominent?:boolean;categoryLabel?:string}){
- const [query,setQuery]=useState(""),[reports,setReports]=useState<ReportView[]|null>(null),[error,setError]=useState(""),[busy,setBusy]=useState(false),[more,setMore]=useState(false),[seller,setSeller]=useState<Seller|null>(null);
- return <div className="relative isolate px-0.5 py-0.5"><IndiaWireframeMap state={seller?.state} district={seller?.district} prominent={prominent}/><div className="relative z-10"><form className={`relative overflow-hidden rounded-3xl border p-5 shadow-sm sm:p-7 ${prominent?"border-blue-700/70 bg-[#15388c]/72 text-white":"border-slate-300/70 bg-white/65"}`} onSubmit={async event=>{event.preventDefault();setBusy(true);setError("");setReports(null);setSeller(null);try{const response=await fetch("/api/seller-search",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({query})}),data=await readJsonResponse<{error?:string;seller:Seller|null;reports:ReportView[];more:boolean}>(response);if(!response.ok)throw new Error(data.error||"Search unavailable.");setReports(data.reports);setSeller(data.seller);setMore(data.more);}catch(cause){setError(cause instanceof Error?cause.message:"Search unavailable.");}finally{setBusy(false);}}}>
-  {prominent&&<div aria-hidden="true" className="absolute -right-16 -top-20 size-56 rounded-full border-[28px] border-[#d6b447]/10"/>}
-  <div className="relative mb-5 flex flex-wrap items-start justify-between gap-4"><div><div className={`flex items-center gap-2 text-sm font-semibold ${prominent?"text-[#f0cf61]":"text-[#a57c10]"}`}><ShieldCheck className="size-4"/>Verified network search</div><h2 className={`mt-2 text-2xl font-semibold ${prominent?"text-white":"text-[#15388c]"}`}>Search seller by GSTIN</h2><p className={`mt-2 text-sm ${prominent?"text-blue-100":"text-slate-500"}`}>Enter the complete 15-character GSTIN. Partial searches and seller lists are not available.</p></div>{categoryLabel&&<span className={`relative rounded-full border px-4 py-2 text-sm font-semibold ${prominent?"border-[#d6b447]/60 bg-[#d6b447]/10 text-[#f6dc7f]":"border-blue-200 bg-blue-50 text-[#15388c]"}`}>Category: {categoryLabel}</span>}</div>
-  <div className="relative grid items-end gap-3 sm:grid-cols-[1fr_auto]"><label className={`text-sm font-semibold ${prominent?"text-blue-50":"text-slate-700"}`}>Seller GSTIN<div className="relative mt-2"><Search className="absolute left-4 top-1/2 size-5 -translate-y-1/2 text-slate-400"/><input value={query} onChange={event=>setQuery(event.target.value.toUpperCase().replace(/\s/g,"").slice(0,15))} required minLength={15} maxLength={15} pattern="[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]" placeholder="27ABCDE1234F1Z5" aria-describedby="gstin-search-help" autoComplete="off" spellCheck={false} className="h-14 w-full rounded-xl border border-white/60 bg-white/85 pl-12 pr-4 font-mono text-lg uppercase tracking-wider text-slate-900 shadow-inner outline-none transition focus:border-[#d6b447] focus:ring-4 focus:ring-[#d6b447]/20"/></div></label><Button disabled={busy||query.length!==15} type="submit" className={`h-14 rounded-xl px-7 text-base font-semibold ${prominent?"bg-[#d6b447] text-[#102d74] hover:bg-[#e6c95d]":"bg-[#15388c] text-white"}`}><Search className="size-5"/>{busy?"Searching…":"Search seller"}</Button></div>
-  <p id="gstin-search-help" className={`relative mt-3 flex items-center gap-2 text-sm ${prominent?"text-blue-100":"text-slate-500"}`}><ShieldCheck className="size-4"/>Only approved reports in your assigned category appear. GSTIN remains masked in results.</p>{error&&<div role="alert" className="relative mt-4 flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 p-4 text-rose-800"><AlertTriangle className="mt-0.5 size-5 shrink-0"/><div><p className="font-semibold">{error.toLowerCase().includes("gstin")||error.toLowerCase().includes("complete")?"Check the GSTIN":"Search temporarily unavailable"}</p><p className="mt-1 text-sm">{error}</p></div></div>}
- </form>
- {reports&&<section className="mt-7" aria-live="polite">{seller?<>{seller.under_review&&<div className="mb-4 flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50/70 p-4 text-amber-900"><AlertTriangle className="mt-0.5 size-5 shrink-0"/><div><p className="font-semibold">Seller identity is under review</p><p className="mt-1 text-sm">Verify the information independently while the administrator reviews it.</p></div></div>}<div className="mb-6 rounded-3xl border border-blue-700/70 bg-[#15388c]/55 p-6 text-white shadow-sm"><div className="flex flex-wrap items-start justify-between gap-5"><div><p className="flex items-center gap-2 text-sm font-semibold text-[#f0cf61]"><Building2 className="size-4"/>Approved seller profile</p><h2 className="mt-3 text-2xl font-semibold">{seller.firm_name}</h2><p className="mt-2 text-blue-100">{seller.taluka}, {seller.district}, {seller.state}{seller.pincode?` · PIN ${seller.pincode}`:""}</p><p className="mt-3 font-mono text-sm text-blue-100">GSTIN {seller.gstin}</p></div><div className="min-w-52 rounded-2xl border border-white/25 bg-[#15388c]/30 px-5 py-4"><p className="flex items-center justify-end gap-2 text-3xl font-semibold"><Star className="size-6 fill-[#d6b447] text-[#d6b447]"/>{seller.average_rating}/10</p><p className="mt-2 text-right text-sm text-blue-100">Average from {seller.report_count} approved report(s)</p></div></div><div className="mt-5 grid gap-3 border-t border-white/25 pt-4 sm:grid-cols-2 lg:grid-cols-4"><Metric label="Reporting companies" value={seller.reporting_companies}/><Metric label="Open disputes" value={seller.open_disputes}/><Metric label="Resolved disputes" value={seller.resolved_disputes}/><Metric label="Legal proceedings" value={seller.legal_count}/><Metric label="Amount reported" value={money(seller.reported_amount_paise)}/><Metric label="Amount resolved" value={money(seller.resolved_amount_paise)}/><Metric label="Latest review" value={seller.latest_reviewed_at?new Date(seller.latest_reviewed_at).toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata"}):"—"}/><Metric label="Review status" value="Admin reviewed"/></div></div></>:<div className="rounded-2xl border border-slate-300/70 bg-white/60 p-7 text-center"><span className="mx-auto grid size-12 place-items-center rounded-full bg-blue-50/80 text-[#15388c]"><Search className="size-5"/></span><h2 className="mt-4 text-xl font-semibold text-[#15388c]">No approved record found</h2><p className="mx-auto mt-2 max-w-lg text-slate-600">No approved seller report matches this GSTIN in your assigned category. Check the GSTIN or submit a new report if you have verified information.</p><a href="/member/submit-report" className="mt-4 inline-block font-semibold text-[#15388c] underline">Submit a seller report</a></div>}{more&&<p className="mb-4 text-sm">Showing the latest 100 approved experiences.</p>}{reports.length>0&&<><h3 className="mb-4 text-xl font-semibold text-[#15388c]">Approved company experiences</h3><ReportCards reports={reports} experienceOnly/></>}</section>}
- </div></div>;
+import { ListFrame, DetailSection } from "@/components/list-frame";
+import type { ReportView } from "@/components/report-cards";
+
+type Seller = {
+  firm_name: string;
+  taluka: string;
+  district: string;
+  state: string;
+  pincode?: string;
+  gstin: string;
+  report_count: number;
+  average_rating: number;
+  reporting_companies: number;
+  disputes: number;
+  open_disputes: number;
+  resolved_disputes: number;
+  reported_amount_paise: number;
+  resolved_amount_paise: number;
+  legal_count: number;
+  latest_reviewed_at: number;
+  under_review: boolean;
+};
+
+function money(paise: number) {
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 0,
+  }).format((paise || 0) / 100);
 }
-function money(paise:number){return new Intl.NumberFormat("en-IN",{style:"currency",currency:"INR",maximumFractionDigits:0}).format((paise||0)/100);}
-function Metric({label,value}:{label:string;value:React.ReactNode}){return <div className="rounded-xl bg-white/10 p-3"><p className="text-xs text-blue-200">{label}</p><p className="mt-1 font-semibold text-white">{value}</p></div>}
+
+function monthLabel(value: string) {
+  const match = String(value || "").match(/^(\d{4})-(\d{2})$/);
+  if (!match) return "—";
+  const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, 1));
+  if (Number.isNaN(date.valueOf())) return "—";
+  return new Intl.DateTimeFormat("en-IN", {
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(date);
+}
+
+function safeDate(value: string | number | null | undefined) {
+  if (value == null || value === "") return "—";
+  const date =
+    typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)
+      ? new Date(`${value}T00:00:00`)
+      : new Date(value);
+  if (Number.isNaN(date.valueOf())) return "—";
+  return date.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" });
+}
+
+export function SellerSearch({
+  categoryLabel,
+}: {
+  /** @deprecated kept for call-site compatibility */
+  prominent?: boolean;
+  categoryLabel?: string;
+}) {
+  const [query, setQuery] = useState("");
+  const [reports, setReports] = useState<ReportView[] | null>(null);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [more, setMore] = useState(false);
+  const [seller, setSeller] = useState<Seller | null>(null);
+
+  async function onSearch(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setBusy(true);
+    setError("");
+    setReports(null);
+    setSeller(null);
+    try {
+      const response = await fetch("/api/seller-search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query }),
+      });
+      const data = await readJsonResponse<{
+        error?: string;
+        seller: Seller | null;
+        reports: ReportView[];
+        more: boolean;
+      }>(response);
+      if (!response.ok) throw new Error(data.error || "Search unavailable.");
+      setReports(data.reports);
+      setSeller(data.seller);
+      setMore(data.more);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Search unavailable.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <ListFrame
+      tone="detail"
+      header={
+        <form
+          onSubmit={onSearch}
+          className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-end sm:px-5"
+        >
+          <label className="min-w-0 flex-1">
+            <span className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-slate-500">
+              <ShieldCheck className="size-3.5 text-[#15388c]" />
+              Seller GSTIN
+            </span>
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+              <input
+                value={query}
+                onChange={event =>
+                  setQuery(
+                    event.target.value
+                      .toUpperCase()
+                      .replace(/\s/g, "")
+                      .slice(0, 15),
+                  )
+                }
+                required
+                minLength={15}
+                maxLength={15}
+                pattern="[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]"
+                placeholder="27ABCDE1234F1Z5"
+                aria-describedby="gstin-search-help"
+                autoComplete="off"
+                spellCheck={false}
+                className="h-10 w-full rounded-[12px] border border-slate-200 bg-white pl-9 pr-3 font-mono text-[13px] uppercase tracking-wide text-slate-900 outline-none transition placeholder:normal-case placeholder:tracking-normal placeholder:text-slate-400 focus:border-[#15388c] focus:ring-4 focus:ring-[#15388c]/10"
+              />
+            </div>
+          </label>
+          <div className="flex flex-wrap items-center gap-2">
+            {categoryLabel && (
+              <span className="inline-flex h-10 items-center rounded-[12px] border border-slate-200 bg-slate-50 px-3 text-[12px] font-semibold text-slate-700">
+                {categoryLabel}
+              </span>
+            )}
+            <button
+              type="submit"
+              disabled={busy || query.length !== 15}
+              className="inline-flex h-10 items-center gap-2 rounded-[12px] bg-[#15388c] px-4 text-[13px] font-semibold text-white transition hover:bg-[#102d74] disabled:opacity-50"
+            >
+              <Search className="size-4" />
+              {busy ? "Searching…" : "Search"}
+            </button>
+          </div>
+          <p id="gstin-search-help" className="sr-only">
+            Enter the complete 15-character GSTIN. Only approved reports in your
+            assigned category appear.
+          </p>
+        </form>
+      }
+    >
+      <div className="p-4 sm:p-5" aria-live="polite">
+        {error && (
+          <div
+            role="alert"
+            className="mb-4 flex items-start gap-2.5 rounded-[12px] border border-rose-200 bg-rose-50 px-3.5 py-3 text-[13px] text-rose-800"
+          >
+            <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+            <div>
+              <p className="font-semibold">
+                {error.toLowerCase().includes("gstin") ||
+                error.toLowerCase().includes("complete")
+                  ? "Check the GSTIN"
+                  : "Search unavailable"}
+              </p>
+              <p className="mt-0.5 text-[12px]">{error}</p>
+            </div>
+          </div>
+        )}
+
+        {!reports && !error && (
+          <div className="grid place-items-center rounded-[12px] border border-dashed border-slate-200 bg-white px-4 py-16 text-center">
+            <span className="grid size-11 place-items-center rounded-[12px] bg-[#15388c]/10 text-[#15388c]">
+              <Search className="size-5" />
+            </span>
+            <p className="mt-3 text-[14px] font-semibold text-slate-900">
+              Search by complete GSTIN
+            </p>
+            <p className="mt-1 max-w-sm text-[12px] leading-5 text-slate-500">
+              Partial searches are not available. Results stay inside your
+              assigned category and GSTIN stays masked.
+            </p>
+          </div>
+        )}
+
+        {reports && !seller && (
+          <div className="rounded-[12px] border border-slate-200 bg-white px-4 py-10 text-center">
+            <span className="mx-auto grid size-11 place-items-center rounded-[12px] bg-slate-100 text-slate-500">
+              <Search className="size-5" />
+            </span>
+            <p className="mt-3 text-[14px] font-semibold text-slate-900">
+              No approved record found
+            </p>
+            <p className="mx-auto mt-1 max-w-md text-[12px] leading-5 text-slate-500">
+              No approved seller report matches this GSTIN in your category.
+            </p>
+            <a
+              href="/member/submit-report"
+              className="mt-4 inline-flex h-9 items-center rounded-[12px] bg-[#15388c] px-3.5 text-[12px] font-semibold text-white hover:bg-[#102d74]"
+            >
+              Submit a seller report
+            </a>
+          </div>
+        )}
+
+        {reports && seller && (
+          <div className="grid gap-4 lg:grid-cols-[minmax(260px,320px)_minmax(0,1fr)] lg:items-start">
+            {/* Left: seller profile box */}
+            <aside className="space-y-3 lg:sticky lg:top-0">
+              {seller.under_review && (
+                <div className="flex gap-2 rounded-[12px] border border-amber-200 bg-amber-50 px-3 py-2.5 text-[12px] text-amber-900">
+                  <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
+                  <p>
+                    Seller identity is under review. Verify independently while
+                    admin decides.
+                  </p>
+                </div>
+              )}
+
+              <DetailSection title="Seller profile">
+                <div className="space-y-3">
+                  <div>
+                    <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-slate-500">
+                      <Building2 className="size-3.5" />
+                      Firm
+                    </p>
+                    <h2 className="mt-1 text-[15px] font-semibold leading-snug text-slate-900">
+                      {seller.firm_name}
+                    </h2>
+                    <p className="mt-1 text-[12px] text-slate-500">
+                      {seller.taluka}, {seller.district}, {seller.state}
+                      {seller.pincode ? ` · ${seller.pincode}` : ""}
+                    </p>
+                    <p className="mt-2 font-mono text-[12px] text-slate-600">
+                      GSTIN {seller.gstin}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center justify-between rounded-[12px] border border-slate-100 bg-slate-50 px-3 py-2.5">
+                    <span className="text-[12px] text-slate-500">
+                      Average rating
+                    </span>
+                    <span className="inline-flex items-center gap-1 text-[14px] font-semibold text-slate-900">
+                      <Star className="size-3.5 fill-[#d6b447] text-[#d6b447]" />
+                      {seller.average_rating}/10
+                    </span>
+                  </div>
+
+                  <dl className="grid grid-cols-2 gap-2">
+                    <Metric
+                      label="Reports"
+                      value={seller.report_count}
+                    />
+                    <Metric
+                      label="Companies"
+                      value={seller.reporting_companies}
+                    />
+                    <Metric
+                      label="Open disputes"
+                      value={seller.open_disputes}
+                    />
+                    <Metric
+                      label="Resolved"
+                      value={seller.resolved_disputes}
+                    />
+                    <Metric
+                      label="Legal"
+                      value={seller.legal_count}
+                    />
+                    <Metric
+                      label="Latest"
+                      value={
+                        seller.latest_reviewed_at
+                          ? safeDate(seller.latest_reviewed_at)
+                          : "—"
+                      }
+                    />
+                    <Metric
+                      label="Amount reported"
+                      value={money(seller.reported_amount_paise)}
+                    />
+                    <Metric
+                      label="Amount resolved"
+                      value={money(seller.resolved_amount_paise)}
+                    />
+                  </dl>
+                </div>
+              </DetailSection>
+            </aside>
+
+            {/* Right: experiences */}
+            <section className="min-w-0 space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="text-[13px] font-semibold text-slate-900">
+                  Approved experiences
+                </h3>
+                <span className="text-[11px] text-slate-500">
+                  {reports.length}
+                  {more ? "+" : ""} shown
+                </span>
+              </div>
+
+              {more && (
+                <p className="text-[12px] text-slate-500">
+                  Showing the latest 100 approved experiences.
+                </p>
+              )}
+
+              {reports.length === 0 ? (
+                <div className="rounded-[12px] border border-slate-200 bg-white px-4 py-8 text-center text-[13px] text-slate-500">
+                  No experience summaries to show.
+                </div>
+              ) : (
+                reports.map(report => (
+                  <ExperienceCard key={report.id} report={report} />
+                ))
+              )}
+            </section>
+          </div>
+        )}
+      </div>
+    </ListFrame>
+  );
+}
+
+function Metric({
+  label,
+  value,
+}: {
+  label: string;
+  value: ReactNode;
+}) {
+  return (
+    <div className="rounded-[12px] border border-slate-100 bg-slate-50 px-2.5 py-2">
+      <dt className="text-[10px] font-semibold uppercase tracking-[0.05em] text-slate-500">
+        {label}
+      </dt>
+      <dd className="mt-0.5 truncate text-[12px] font-semibold text-slate-900">
+        {value}
+      </dd>
+    </div>
+  );
+}
+
+function ExperienceCard({ report }: { report: ReportView }) {
+  return (
+    <article className="rounded-[12px] border border-slate-200 bg-white p-3.5 sm:p-4">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="min-w-0">
+          {!!report.dispute && report.reporter_company ? (
+            <>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.05em] text-rose-700">
+                Dispute reported by
+              </p>
+              <h4 className="mt-0.5 truncate text-[13px] font-semibold text-slate-900">
+                {report.reporter_company}
+              </h4>
+            </>
+          ) : (
+            <h4 className="text-[13px] font-semibold text-slate-900">
+              Company experience
+            </h4>
+          )}
+          <p className="mt-0.5 text-[11px] text-slate-500">
+            Reported {safeDate(report.created_at)}
+          </p>
+        </div>
+        <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold capitalize text-emerald-800">
+          {report.rating}/10 · {report.status}
+        </span>
+      </div>
+
+      <p className="mt-2.5 whitespace-pre-wrap break-words text-[13px] leading-5 text-slate-700">
+        {report.summary}
+      </p>
+
+      {!!Number(report.dispute) && (
+        <div
+          className={`mt-3 rounded-[12px] px-3 py-2.5 text-[12px] ${
+            report.dispute_resolved
+              ? "bg-emerald-50 text-emerald-900"
+              : "bg-rose-50 text-rose-900"
+          }`}
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <strong>Commercial dispute</strong>
+            <span className="rounded-full bg-white/70 px-2 py-0.5 text-[11px] font-semibold">
+              {report.dispute_resolved ? "Resolved" : "Open"}
+            </span>
+          </div>
+          <p className="mt-1">
+            {report.dispute_type?.replaceAll("_", " ")}
+            {report.dispute_other ? ` — ${report.dispute_other}` : ""} ·{" "}
+            {money(Number(report.amount_paise) || 0)}
+          </p>
+          <p className="mt-1 text-[11px] opacity-90">
+            {report.dispute_start_month
+              ? `${monthLabel(report.dispute_start_month)} – ${
+                  report.dispute_ongoing
+                    ? "Ongoing"
+                    : report.dispute_end_month
+                      ? monthLabel(report.dispute_end_month)
+                      : "—"
+                }`
+              : "Period not provided"}
+          </p>
+        </div>
+      )}
+
+      {!!Number(report.legal) && (
+        <p className="mt-2 rounded-[12px] bg-violet-50 px-3 py-2 text-[12px] text-violet-900">
+          Legal proceedings · {report.case_number || "Case number on file"}
+        </p>
+      )}
+    </article>
+  );
+}

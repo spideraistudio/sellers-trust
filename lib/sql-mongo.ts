@@ -689,18 +689,14 @@ export class Prepared {
 export class MongoSqlDb {
   prepare(sql:string){return new Prepared(sql);}
   async batch(statements:Prepared[]){
-    const c=await mongoClient();
-    const session=c.startSession();
-    try{
-      const results:QueryResult<Row>[]=[];
-      await session.withTransaction(async()=>{
-        results.length=0;
-        for(const statement of statements){
-          results.push(await new Prepared(statement.sql,statement.values,session).run());
-        }
-      });
-      return results;
-    }finally{await session.endSession();}
+    // Sequential execution: the SQL→Mongo emulator already issues discrete
+    // collection ops; multi-doc transactions often hit the 60s txnLifetime
+    // on Atlas and make API routes look like they never respond.
+    const results:QueryResult<Row>[]=[];
+    for(const statement of statements){
+      results.push(await new Prepared(statement.sql,statement.values).run());
+    }
+    return results;
   }
   async withConnection<T>(fn:(db:{prepare:(sql:string)=>Prepared})=>Promise<T>){
     return fn({prepare:(sql:string)=>new Prepared(sql)});

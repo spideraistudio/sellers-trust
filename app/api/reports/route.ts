@@ -6,7 +6,6 @@ import { reportDb,reportMember,identifierKey } from "@/lib/report-store";
 import { flagRepeatedUpload,recordSecurityEvent } from "@/lib/security";
 import { notifyAdmin } from "@/lib/notifications";
 import { validateIndianLocation } from "@/lib/india-locations";
-import { operationGuard } from "@/lib/operation-guard";
 import { isOriginValid } from "@/lib/origin-check";
 const reply=(data:object,status=200)=>NextResponse.json(data,{status,headers:{"Cache-Control":"no-store"}});
 export async function POST(request:Request) {
@@ -16,7 +15,16 @@ export async function POST(request:Request) {
  let submittedId: string | null = null;
  try {
   if(Number(request.headers.get("content-length")||0)>6*1024*1024){await flagRepeatedUpload(request,member.id,"Repeated oversized seller-report uploads");return reply({error:"Upload at most three files of 1.5 MB each."},413);}
-  const form=await readFormBody(request);const v=reportInput.parse(JSON.parse(String(form.get("report")||"{}")));
+  const form=await readFormBody(request);
+  let raw: unknown;
+  try { raw = JSON.parse(String(form.get("report")||"{}")); }
+  catch { return reply({ error: "Invalid report payload." }, 400); }
+  const parsed = reportInput.safeParse(raw);
+  if (!parsed.success) {
+    const message = parsed.error.issues[0]?.message || "Check required fields.";
+    return reply({ error: message }, 400);
+  }
+  const v = parsed.data;
   const db=reportDb();submittedId=v.requestId;
   const previous=await db.prepare("SELECT id FROM seller_reports WHERE id=? AND member_id=?").bind(v.requestId,member.id).first();
   if(previous) return reply({id:v.requestId});
@@ -34,16 +42,26 @@ export async function POST(request:Request) {
    if(!mime){await flagRepeatedUpload(request,member.id,"Repeated invalid seller-report file types");return reply({error:"Only PDF, JPG and PNG documents are accepted."},400);}
    docs.push({file,mime,id:crypto.randomUUID()});
   }
-  const identity=established&&!v.requestSellerCorrection?{firmName:established.firm_name,taluka:established.taluka,district:established.district,state:established.state,pincode:established.pincode}:v;const newSellerId=crypto.randomUUID();const now=Date.now();
-  const guard=operationGuard("NOT EXISTS(SELECT 1 FROM seller_reports r JOIN sellers s ON s.id=r.seller_id WHERE r.member_id=? AND r.category=? AND s.gst_lookup=? AND r.status IN ('pending','approved'))",[member.id,member.category,gstKey]);
-  const statements=[guard.check,db.prepare("INSERT INTO sellers(id,category,gst_lookup,gst_last4) VALUES(?,?,?,?) ON CONFLICT (category,gst_lookup) DO NOTHING").bind(newSellerId,member.category,gstKey,v.gstin.slice(-4)),
+  const identity=established&&!v.requestSellerCorrection?{firmName:established.firm_name,taluka:established.taluka,district:established.district,state:established.state,pincode:established.pincode||""}:v;const newSellerId=crypto.randomUUID();const now=Date.now();
+  const identityValues=[identity.firmName,"",identity.taluka,identity.district,identity.state,identity.pincode||""].map(value=>redactIdentifiers(String(value??"")));
+  const statements=[db.prepare("INSERT INTO sellers(id,category,gst_lookup,gst_last4) VALUES(?,?,?,?) ON CONFLICT (category,gst_lookup) DO NOTHING").bind(newSellerId,member.category,gstKey,v.gstin.slice(-4)),
    db.prepare(`INSERT INTO seller_reports(id,seller_id,member_id,category,firm_name,person_name,taluka,district,state,pincode,rating,dispute,amount_paise,dispute_type,dispute_other,dispute_start_month,dispute_end_month,dispute_ongoing,legal,case_number,summary,status,created_at)
-    SELECT ?,id,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'pending',? FROM sellers WHERE category=? AND gst_lookup=?`).bind(v.requestId,member.id,member.category,...[identity.firmName,"",identity.taluka,identity.district,identity.state,identity.pincode].map(redactIdentifiers),v.rating,Number(v.dispute),v.dispute?amountPaise(v.amount,v.unit):null,v.dispute?v.disputeType:null,v.dispute&&v.disputeType==='other'?redactIdentifiers(v.disputeOther):null,v.dispute?v.disputeStartMonth:null,v.dispute&&!v.disputeOngoing?v.disputeEndMonth:null,Number(v.dispute&&v.disputeOngoing),Number(v.legal),v.legal?redactIdentifiers(v.caseNumber):null,redactIdentifiers(v.summary),now,member.category,gstKey)];
+    SELECT ?,id,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'pending',? FROM sellers WHERE category=? AND gst_lookup=?`).bind(v.requestId,member.id,member.category,...identityValues,v.rating,Number(v.dispute),v.dispute?amountPaise(v.amount,v.unit):null,v.dispute?v.disputeType:null,v.dispute&&v.disputeType==='other'?redactIdentifiers(v.disputeOther):null,v.dispute?v.disputeStartMonth:null,v.dispute&&!v.disputeOngoing?v.disputeEndMonth:null,Number(v.dispute&&v.disputeOngoing),Number(v.legal),v.legal?redactIdentifiers(v.caseNumber):null,redactIdentifiers(v.summary),now,member.category,gstKey)];
   for(const doc of docs){const key=`reports/${v.requestId}/${doc.id}`;await env.REPORT_FILES.put(key,doc.file.stream(),{httpMetadata:{contentType:doc.mime}});uploaded.push(key);statements.push(db.prepare("INSERT INTO report_documents(id,report_id,object_key,name,mime,size) VALUES(?,?,?,?,?,?)").bind(doc.id,v.requestId,key,redactIdentifiers(doc.file.name).slice(0,150),doc.mime,doc.file.size));}
   statements.push(db.prepare("INSERT INTO report_audit(id,report_id,actor,action,created_at) VALUES(?,?,?,?,?)").bind(crypto.randomUUID(),v.requestId,`member:${member.id}`,"submitted",now));
-  statements.push(guard.release);await db.batch(statements);await notifyAdmin({type:established&&v.requestSellerCorrection?"seller_correction":"report_submission",title:established&&v.requestSellerCorrection?"Seller-detail correction request":"New seller report",message:`${v.firmName} was submitted for administrator review.`,href:"/admin/reports"});return reply({id:v.requestId},201);
+  await db.batch(statements);
+  void notifyAdmin({type:established&&v.requestSellerCorrection?"seller_correction":"report_submission",title:established&&v.requestSellerCorrection?"Seller-detail correction request":"New seller report",message:`${v.firmName} was submitted for administrator review.`,href:"/admin/reports"});
+  return reply({id:v.requestId},201);
  }catch(error){
   // A lost database response may follow a successful commit. Reconcile before deleting files.
+  console.error("[api/reports]", error);
   if(submittedId){try{const saved=await reportDb().prepare("SELECT id FROM seller_reports WHERE id=? AND member_id=?").bind(submittedId,member.id).first();if(saved)return reply({id:submittedId});}catch{return reply({error:"Submission status is uncertain. Check My reports before retrying."},503);}}
-  if(uploaded.length) await env.REPORT_FILES.delete(uploaded).catch(()=>{});return reply({error:error instanceof Error && error.name==='ZodError' ? JSON.parse(error.message)[0]?.message || "Check required fields." : "Unable to submit. Your form is preserved; please retry."},400);}
+  if(uploaded.length) await env.REPORT_FILES.delete(uploaded).catch(()=>{});
+  const guardFailed = error instanceof Error && (error as { code?: string }).code === "GUARD_FAILED";
+  return reply({
+    error: guardFailed
+      ? "You already submitted a report about this seller. Open My Reports to edit it or request changes."
+      : "Unable to submit. Your form is preserved; please retry.",
+  }, 400);
+ }
 }

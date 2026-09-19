@@ -84,6 +84,7 @@ export default async function CompaniesPage({
       reportedDisputes: Number(member.reportedDisputes || 0),
       resolvedDisputes: Number(member.resolvedDisputes || 0),
       hasCredentials: Boolean(member.passwordHash),
+      searchEnabled: Boolean(member.searchEnabled),
     }));
 
   const paged = paginateItems(filtered, page, LIST_PAGE_SIZE);

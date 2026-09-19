@@ -9,6 +9,7 @@ export function dashboardProfile(member: Member): DashboardProfile {
     responsiblePersonName: member.responsiblePersonName, mobileNumber: member.mobileNumber,
     email: member.email, categoryLabel: categoryAccess(member)?.label ?? null, isPilot: Boolean(member.isPilot),
     requestedCategory: member.category === "other" ? member.otherCategory : null,
+    searchEnabled: Boolean(member.searchEnabled),
     approvedOn: member.reviewedAt ? member.reviewedAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" }) : "Not recorded",
   };
 }

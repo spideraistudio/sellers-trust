@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { MemberStatusForm } from "@/components/member-status-form";
 import { AdminCredentials } from "@/components/admin-credentials";
+import { SearchAccessToggle } from "@/components/search-access-toggle";
 import { DetailSection, ListFrame } from "@/components/list-frame";
 
 export type CompanyListItem = {
@@ -38,6 +39,7 @@ export type CompanyListItem = {
   reportedDisputes: number;
   resolvedDisputes: number;
   hasCredentials: boolean;
+  searchEnabled: boolean;
 };
 
 function statusClass(status: string) {
@@ -211,6 +213,11 @@ export function AdminCompaniesPanel({
               <Row label="Status" value={<span className="capitalize">{selected.status}</span>} strong />
               <Row label="Member ID" value={selected.loginId || "Not issued"} />
               <Row label="Credentials" value={selected.hasCredentials ? "Issued" : "Not issued"} />
+              <Row
+                label="Seller search"
+                value={selected.searchEnabled ? "Enabled" : "Disabled"}
+                strong
+              />
             </DetailSection>
 
             <DetailSection title="Dispute activity">
@@ -219,29 +226,37 @@ export function AdminCompaniesPanel({
             </DetailSection>
 
             <DetailSection title="Actions">
-              <div className="flex flex-wrap items-center gap-2">
-                {["pending", "approved", "deactivated"].includes(selected.status) && (
-                  <div className="min-w-0 flex-1">
-                    <MemberStatusForm memberId={selected.id} status={selected.status} compact />
-                  </div>
+              <div className="space-y-2">
+                {selected.status === "approved" && (
+                  <SearchAccessToggle
+                    memberId={selected.id}
+                    searchEnabled={selected.searchEnabled}
+                  />
                 )}
-                {["pending", "approved"].includes(selected.status) && (
-                  <div className="min-w-0 flex-1">
-                    <AdminCredentials
-                      memberId={selected.id}
-                      pending={selected.status === "pending"}
-                      hasCredentials={selected.hasCredentials}
-                      compact
-                    />
-                  </div>
-                )}
-                <a
-                  href={`/admin/reports?status=approved&memberId=${selected.id}`}
-                  className="inline-flex h-10 min-w-0 flex-1 items-center justify-center gap-2 rounded-[12px] border border-slate-200 bg-white px-3 text-[13px] font-semibold text-[#15388c] hover:bg-slate-50"
-                >
-                  <FileText className="size-4 shrink-0" />
-                  Seller reports
-                </a>
+                <div className="flex flex-wrap items-center gap-2">
+                  {["pending", "approved", "deactivated"].includes(selected.status) && (
+                    <div className="min-w-0 flex-1">
+                      <MemberStatusForm memberId={selected.id} status={selected.status} compact />
+                    </div>
+                  )}
+                  {["pending", "approved"].includes(selected.status) && (
+                    <div className="min-w-0 flex-1">
+                      <AdminCredentials
+                        memberId={selected.id}
+                        pending={selected.status === "pending"}
+                        hasCredentials={selected.hasCredentials}
+                        compact
+                      />
+                    </div>
+                  )}
+                  <a
+                    href={`/admin/reports?status=approved&memberId=${selected.id}`}
+                    className="inline-flex h-10 min-w-0 flex-1 items-center justify-center gap-2 rounded-[12px] border border-slate-200 bg-white px-3 text-[13px] font-semibold text-[#15388c] hover:bg-slate-50"
+                  >
+                    <FileText className="size-4 shrink-0" />
+                    Seller reports
+                  </a>
+                </div>
               </div>
             </DetailSection>
           </div>

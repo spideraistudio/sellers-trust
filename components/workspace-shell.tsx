@@ -131,7 +131,8 @@ const MEMBER_DEFAULTS: Record<string, WorkspacePageMeta> = {
   "/member/submit-report": {
     eyebrow: "Company workspace",
     title: "Submit report",
-    description: "Provide factual business information for administrator review.",
+    description:
+      "Provide factual business information. Admin approval is required before other members can find it.",
   },
   "/member/reports": {
     eyebrow: "Company workspace",
