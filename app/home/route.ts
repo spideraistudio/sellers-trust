@@ -1,4 +1,4 @@
-import { NextResponse, type NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import { getChatGPTUser } from "@/app/chatgpt-auth";
 import { isConfiguredAdmin } from "@/lib/member-data";
 import { currentMember } from "@/lib/member-session";
@@ -8,14 +8,18 @@ export const dynamic = "force-dynamic";
 /**
  * Brand-logo destination used across every page.
  *
- * Resolves the caller's session and sends them to the home page that belongs
- * to them: administrators to the admin console, approved members to their
- * workspace, and everyone else to the public landing page.
+ * Uses a relative Location header so production (often bound to 0.0.0.0 behind
+ * a reverse proxy) never sends browsers to http://0.0.0.0:port/.
  */
-export async function GET(request: NextRequest) {
-  const response = NextResponse.redirect(new URL(await homePath(), request.url));
-  response.headers.set("Cache-Control", "private, no-store");
-  return response;
+export async function GET() {
+  const path = await homePath();
+  return new NextResponse(null, {
+    status: 307,
+    headers: {
+      Location: path,
+      "Cache-Control": "private, no-store",
+    },
+  });
 }
 
 async function homePath(): Promise<string> {
