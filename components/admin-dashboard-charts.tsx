@@ -71,6 +71,8 @@ export function AdminDashboardCharts({
   openDisputes,
   resolvedDisputes,
   pendingResolutions,
+  approvedResolutions,
+  rejectedResolutions,
   totalDisputedPaise,
   openDisputedPaise,
   resolvedDisputedPaise,
@@ -85,6 +87,8 @@ export function AdminDashboardCharts({
   openDisputes: number;
   resolvedDisputes: number;
   pendingResolutions: number;
+  approvedResolutions: number;
+  rejectedResolutions: number;
   totalDisputedPaise: number;
   openDisputedPaise: number;
   resolvedDisputedPaise: number;
@@ -117,7 +121,10 @@ export function AdminDashboardCharts({
     { label: "Pending companies", value: pendingMembers },
     { label: "Pending reports", value: pendingReports },
     { label: "Pending resolutions", value: pendingResolutions },
-    { label: "Open disputes", value: openDisputes },
+    { label: "Approved resolutions", value: approvedResolutions },
+    { label: "Rejected resolutions", value: rejectedResolutions },
+    { label: "Reports with open dispute", value: openDisputes },
+    { label: "Reports with resolved dispute", value: resolvedDisputes },
   ];
   const queueMax = Math.max(...queueItems.map(q => q.value), 1);
 

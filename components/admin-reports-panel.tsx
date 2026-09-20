@@ -24,6 +24,25 @@ function statusClass(status: string) {
   return "bg-slate-100 text-slate-600";
 }
 
+function disputeBadge(report: ReportView) {
+  if (!Number(report.dispute)) {
+    return { label: "None", className: "bg-slate-100 text-slate-600" };
+  }
+  if (report.pending_resolution) {
+    return { label: "Pending review", className: "bg-amber-50 text-amber-800" };
+  }
+  const amount = Number(report.amount_paise) || 0;
+  const resolvedAmount = Number(report.resolved_amount_paise) || 0;
+  const fullyPaid = amount > 0 && resolvedAmount >= amount;
+  if (report.dispute_resolved || fullyPaid) {
+    return { label: "Resolved", className: "bg-emerald-50 text-emerald-700" };
+  }
+  if (resolvedAmount > 0) {
+    return { label: "Partially resolved", className: "bg-sky-50 text-sky-800" };
+  }
+  return { label: "Open", className: "bg-rose-50 text-rose-700" };
+}
+
 function initials(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   if (!parts.length) return "SR";
@@ -175,7 +194,18 @@ export function AdminReportsPanel({
               <DetailSection title="Commercial dispute">
                 <Row
                   label="Status"
-                  value={selected.dispute_resolved ? "Resolved" : "Open"}
+                  value={
+                    selected.pending_resolution
+                      ? "Pending review"
+                      : selected.dispute_resolved ||
+                          ((Number(selected.amount_paise) || 0) > 0 &&
+                            (Number(selected.resolved_amount_paise) || 0) >=
+                              (Number(selected.amount_paise) || 0))
+                        ? "Resolved"
+                        : (Number(selected.resolved_amount_paise) || 0) > 0
+                          ? "Partially resolved"
+                          : "Open"
+                  }
                   strong
                 />
                 <Row
@@ -324,12 +354,13 @@ export function AdminReportsPanel({
         <table className="w-full min-w-[920px] table-fixed text-left">
           <thead className="sticky top-0 z-10">
             <tr className="border-b border-slate-100 bg-[#fafbfc] text-[11px] font-semibold uppercase tracking-[0.12em] text-[#15388c]">
-              <th className="w-[26%] px-4 py-3">Seller</th>
-              <th className="w-[16%] px-3 py-3">Reporter</th>
+              <th className="w-[22%] px-4 py-3">Seller</th>
+              <th className="w-[14%] px-3 py-3">Reporter</th>
               <th className="w-[10%] px-3 py-3">Category</th>
-              <th className="w-[10%] px-3 py-3">Rating</th>
-              <th className="w-[12%] px-3 py-3">Status</th>
-              <th className="w-[12%] px-3 py-3">Reported</th>
+              <th className="w-[8%] px-3 py-3">Rating</th>
+              <th className="w-[11%] px-3 py-3">Status</th>
+              <th className="w-[12%] px-3 py-3">Dispute</th>
+              <th className="w-[11%] px-3 py-3">Reported</th>
               <th className="w-[8%] px-3 py-3 text-right">Action</th>
             </tr>
           </thead>
@@ -376,6 +407,19 @@ export function AdminReportsPanel({
                     <span className="size-1.5 rounded-full bg-current opacity-70" />
                     {report.status}
                   </span>
+                </td>
+                <td className="px-3 py-3">
+                  {(() => {
+                    const dispute = disputeBadge(report);
+                    return (
+                      <span
+                        className={`inline-flex items-center gap-1.5 rounded-[12px] px-2 py-1 text-[11px] font-semibold ${dispute.className}`}
+                      >
+                        <span className="size-1.5 rounded-full bg-current opacity-70" />
+                        {dispute.label}
+                      </span>
+                    );
+                  })()}
                 </td>
                 <td className="whitespace-nowrap px-3 py-3 text-[13px] text-slate-600">
                   {safeDate(report.created_at)}

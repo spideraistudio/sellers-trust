@@ -2,13 +2,71 @@ import { redirect } from "next/navigation";
 import { requireChatGPTUser } from "@/app/chatgpt-auth";
 import { isConfiguredAdmin } from "@/lib/member-data";
 import { reportDb } from "@/lib/report-store";
+import { syncResolvedDisputesFromApprovals } from "@/lib/sync-resolved-disputes";
 import { ReportShell } from "@/components/report-shell";
-import { ResolutionReview } from "@/components/resolution-review";
-export const dynamic="force-dynamic";
-type Row={id:string;report_id:string;resolved_on:string;description:string;status:string;admin_notes:string|null;created_at:number;reviewed_at:number|null;firm_name:string;category:string;company_name:string;login_id:string|null;mobile_number:string};
-export default async function Page(){
- const user=await requireChatGPTUser("/admin/resolutions");if(!isConfiguredAdmin(user.email))redirect("/join");const db=reportDb();
- const result=await db.prepare("SELECT q.id,q.report_id,q.resolved_on,q.description,q.status,q.admin_notes,q.created_at,q.reviewed_at,r.firm_name,r.category,m.company_name,m.login_id,m.mobile_number FROM dispute_resolution_requests q JOIN seller_reports r ON r.id=q.report_id JOIN members m ON m.id=q.member_id ORDER BY CASE q.status WHEN 'pending' THEN 0 ELSE 1 END,q.created_at DESC LIMIT 100").all<Row>();
- const rows=[];for(const row of result.results){const documents=await db.prepare("SELECT id,name FROM dispute_resolution_documents WHERE request_id=?").bind(row.id).all<{id:string;name:string}>();rows.push({...row,documents:documents.results});}
- return <ReportShell admin title="Dispute resolution history" description="Pending requests appear first. Approved and rejected decisions remain available as a permanent review history.">{rows.length?<div className="space-y-5">{rows.map(row=><article key={row.id} className="rounded-[12px] border bg-white p-5 sm:p-7"><div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-xl font-semibold">{row.firm_name}</h2><p className="mt-2 text-sm text-slate-600">Requested by {row.company_name} · {row.login_id||"Member ID pending"} · {row.mobile_number}</p></div><span className={`rounded-[12px] px-3 py-2 text-sm font-semibold capitalize ${row.status==='approved'?'bg-emerald-50 text-emerald-800':row.status==='rejected'?'bg-rose-50 text-rose-800':'bg-amber-50 text-amber-800'}`}>{row.category} · {row.status}</span></div><dl className="mt-5 grid gap-4 sm:grid-cols-2"><div><dt className="text-sm text-slate-500">Resolution date</dt><dd className="mt-1 font-medium">{new Date(`${row.resolved_on}T00:00:00`).toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata"})}</dd></div><div><dt className="text-sm text-slate-500">Request submitted</dt><dd className="mt-1">{new Date(row.created_at).toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata"})}</dd></div></dl><p className="mt-5 whitespace-pre-wrap leading-7">{row.description}</p>{row.admin_notes&&<p className="mt-4 rounded-lg bg-slate-50 p-3 text-sm text-slate-700">Admin note: {row.admin_notes}</p>}{row.documents.length?<div className="mt-4">{row.documents.map(document=><a key={document.id} href={`/api/resolution-document/${document.id}`} className="break-all text-sm font-medium text-emerald-800 underline">{document.name}</a>)}</div>:<p className="mt-4 text-sm text-slate-500">No supporting document supplied.</p>}{row.status==='pending'&&<ResolutionReview id={row.id}/>}</article>)}</div>:<p className="rounded-xl border bg-white p-6">No dispute resolution requests have been submitted.</p>}</ReportShell>;
+import {
+  AdminResolutionsPanel,
+  type ResolutionListItem,
+} from "@/components/admin-resolutions-panel";
+
+export const dynamic = "force-dynamic";
+
+type Row = {
+  id: string;
+  report_id: string;
+  resolved_on: string;
+  resolved_amount_paise: number;
+  description: string;
+  status: string;
+  admin_notes: string | null;
+  created_at: number;
+  reviewed_at: number | null;
+  firm_name: string;
+  category: string;
+  company_name: string;
+  login_id: string | null;
+  mobile_number: string;
+};
+
+export default async function Page() {
+  const user = await requireChatGPTUser("/admin/resolutions");
+  if (!isConfiguredAdmin(user.email)) redirect("/join");
+
+  await syncResolvedDisputesFromApprovals();
+
+  const db = reportDb();
+  const result = await db
+    .prepare(
+      "SELECT q.id,q.report_id,q.resolved_on,q.resolved_amount_paise,q.description,q.status,q.admin_notes,q.created_at,q.reviewed_at,r.firm_name,r.category,m.company_name,m.login_id,m.mobile_number FROM dispute_resolution_requests q JOIN seller_reports r ON r.id=q.report_id JOIN members m ON m.id=q.member_id ORDER BY CASE q.status WHEN 'pending' THEN 0 ELSE 1 END,q.created_at DESC LIMIT 100",
+    )
+    .all<Row>();
+
+  const rows: ResolutionListItem[] = [];
+  for (const row of result.results) {
+    const documents = await db
+      .prepare("SELECT id,name FROM dispute_resolution_documents WHERE request_id=?")
+      .bind(row.id)
+      .all<{ id: string; name: string }>();
+    rows.push({
+      ...row,
+      resolved_amount_paise: Number(row.resolved_amount_paise || 0),
+      documents: documents.results,
+    });
+  }
+
+  const pending = rows.filter(r => r.status === "pending").length;
+
+  return (
+    <ReportShell
+      admin
+      title="Dispute resolutions"
+      description={
+        pending
+          ? `${pending} request${pending === 1 ? "" : "s"} waiting for approve or reject.`
+          : "Review member dispute resolution requests. Pending items appear first."
+      }
+    >
+      <AdminResolutionsPanel rows={rows} />
+    </ReportShell>
+  );
 }

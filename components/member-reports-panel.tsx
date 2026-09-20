@@ -220,7 +220,16 @@ export function MemberReportsPanel({
               <DetailSection title="Commercial dispute">
                 <Row
                   label="Status"
-                  value={selected.dispute_resolved ? "Resolved" : "Open"}
+                  value={
+                    selected.dispute_resolved ||
+                    ((Number(selected.amount_paise) || 0) > 0 &&
+                      (Number(selected.resolved_amount_paise) || 0) >=
+                        (Number(selected.amount_paise) || 0))
+                      ? "Resolved"
+                      : (Number(selected.resolved_amount_paise) || 0) > 0
+                        ? "Partially resolved"
+                        : "Open"
+                  }
                   strong
                 />
                 <Row
@@ -463,11 +472,16 @@ export function MemberReportsPanel({
                 <td className="px-3 py-3 text-[12px] text-slate-600">
                   {!Number(report.dispute)
                     ? "—"
-                    : report.dispute_resolved
+                    : report.dispute_resolved ||
+                        ((Number(report.amount_paise) || 0) > 0 &&
+                          (Number(report.resolved_amount_paise) || 0) >=
+                            (Number(report.amount_paise) || 0))
                       ? "Resolved"
                       : report.pending_resolution
                         ? "Pending"
-                        : "Open"}
+                        : (Number(report.resolved_amount_paise) || 0) > 0
+                          ? "Partial"
+                          : "Open"}
                 </td>
                 <td className="whitespace-nowrap px-3 py-3 text-[13px] text-slate-600">
                   {safeDate(report.created_at)}

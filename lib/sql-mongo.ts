@@ -91,7 +91,9 @@ function splitTop(input:string,sep:string){
     if(depth===0 && input.slice(i,i+sep.length).toUpperCase()===u){
       const leftOk=!needsSpace || i===0 || /\s/.test(input[i-1]||" ");
       const rightOk=!needsSpace || i+sep.length>=input.length || /\s/.test(input[i+sep.length]||"");
-      if(leftOk && rightOk){
+      // Do not treat the "=" inside >=, <=, !=, or <> as a separator.
+      const multiOp = sep==="=" && (input[i-1]===">" || input[i-1]==="<" || input[i-1]==="!");
+      if(leftOk && rightOk && !multiOp){
         out.push(cur.trim());cur="";i+=sep.length-1;continue;
       }
     }
