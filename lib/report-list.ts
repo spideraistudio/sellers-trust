@@ -1,6 +1,7 @@
 import { reportDb,safeReportColumns,maskReport,identifierKey } from "./report-store";
 import { mongoDb } from "./sql-mongo";
 import type { ReportView } from "@/components/report-cards";
+import { syncApprovedResolutionsToReports } from "@/lib/sync-approved-resolutions";
 
 function asKey(value:unknown){
   if(value==null)return "";
@@ -41,6 +42,7 @@ export async function listOverviewReports(limit=20):Promise<OverviewReport[]>{
 }
 
 export async function reportList(member:{id:number|string;category:string}|null,before:number,search=""){
+ await syncApprovedResolutionsToReports();
  const query=search.trim().toLowerCase(),filter=member&&query?" AND (lower(r.firm_name) LIKE ? OR lower(r.summary) LIKE ? OR lower(COALESCE(r.dispute_type,'')) LIKE ?)":"",args:(string|number)[]=member?[before,member.id,member.category,member.category]:[before];if(filter){const like=`%${query}%`;args.push(like,like,like);}
  const db=reportDb();const result=await db.prepare(`SELECT ${safeReportColumns}${member?",(SELECT q.status FROM dispute_resolution_requests q WHERE q.report_id=r.id ORDER BY q.created_at DESC LIMIT 1) latest_resolution_status,(SELECT q.admin_notes FROM dispute_resolution_requests q WHERE q.report_id=r.id ORDER BY q.created_at DESC LIMIT 1) latest_resolution_notes":',m.login_id reporter_login_id,m.company_name reporter_company,m.mobile_number reporter_mobile'} FROM seller_reports r JOIN sellers s ON s.id=r.seller_id ${member?'':'JOIN members m ON m.id=r.member_id'} WHERE r.created_at < ? ${member?'AND r.member_id=? AND r.category=? AND s.category=?':"AND r.status='pending'"}${filter} ORDER BY r.created_at DESC LIMIT 51`).bind(...args).all<Record<string,unknown>>();
  const rows=result.results.slice(0,50);const reports=[];

@@ -1,10 +1,12 @@
 import { readJsonBody } from "@/lib/request-body";
 import { NextResponse } from "next/server";
 import { reportDb,reportMember,identifierKey,safeReportColumns,maskReport } from "@/lib/report-store";
+import { syncApprovedResolutionsToReports } from "@/lib/sync-approved-resolutions";
 export async function POST(request:Request){
  const reply=(data:object,status=200)=>NextResponse.json(data,{status,headers:{"Cache-Control":"no-store"}});
  const member=await reportMember();if(!member)return reply({error:"An approved membership and assigned category are required."},403);
  try{
+  await syncApprovedResolutionsToReports();
   const body=await readJsonBody(request) as {query?:string},query=String(body.query||"").trim().toUpperCase();if(!/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/.test(query))return reply({error:"Enter the complete valid GSTIN."},400);
   const key=identifierKey(member.category,"gst",query),db=reportDb();
   if(!member.searchEnabled)return reply({error:"Seller search has been disabled for your membership. Contact the administrator."},403);

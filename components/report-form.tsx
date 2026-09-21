@@ -11,6 +11,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { LocationFields } from "@/components/location-fields";
 import { DetailSection, ListFrame } from "@/components/list-frame";
+import { IndianAmountInput, parseIndianAmount } from "@/components/indian-amount-input";
 
 export type EditableReport = {
   id: string;
@@ -119,7 +120,6 @@ export function ReportForm({ initial }: { initial?: EditableReport }) {
   const [legal, setLegal] = useState(Boolean(initial?.legal));
   const [ongoing, setOngoing] = useState(Boolean(initial?.dispute_ongoing));
   const [rating, setRating] = useState(initial ? String(initial.rating) : "");
-  const [unit, setUnit] = useState("lakhs");
   const [type, setType] = useState(initial?.dispute_type || "payment_default");
   const [kept, setKept] = useState<string[]>(
     initial?.documents?.map(document => document.id) || [],
@@ -189,9 +189,9 @@ export function ReportForm({ initial }: { initial?: EditableReport }) {
           return;
         }
         if (dispute) {
-          const amount = get("amount");
-          if (!/^[0-9]{1,9}(\.[0-9]{1,2})?$/.test(amount)) {
-            setError("Enter a valid disputed amount.");
+          const amount = parseIndianAmount(get("amount"));
+          if (!/^[0-9]{1,12}(\.[0-9]{1,2})?$/.test(amount) || Number(amount) <= 0) {
+            setError("Enter the full disputed amount in INR (e.g. 2,58,205).");
             return;
           }
           if (!get("disputeStartMonth")) {
@@ -245,8 +245,8 @@ export function ReportForm({ initial }: { initial?: EditableReport }) {
           pincode: lockedIdentity?.pincode ?? get("pincode"),
           rating: Number(rating),
           dispute,
-          amount: get("amount"),
-          unit,
+          amount: parseIndianAmount(get("amount")),
+          unit: "rupees",
           disputeType: type,
           disputeOther: get("disputeOther"),
           disputeStartMonth: get("disputeStartMonth"),
@@ -491,31 +491,18 @@ export function ReportForm({ initial }: { initial?: EditableReport }) {
               </label>
               {dispute && (
                 <div className="space-y-3 rounded-[12px] border border-rose-200 bg-rose-50/80 p-3.5">
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <Field
-                      name="amount"
-                      label="Disputed amount"
-                      type="number"
-                      min="0.01"
-                      step="0.01"
-                      defaultValue={
-                        initial?.amount_paise
-                          ? initial.amount_paise / 10000000
-                          : undefined
-                      }
-                    />
-                    <Choice
-                      name="unit"
-                      label="Denomination (INR) *"
-                      options={[
-                        ["thousands", "Thousands"],
-                        ["lakhs", "Lakhs"],
-                        ["crores", "Crores"],
-                      ]}
-                      value={unit}
-                      onChange={setUnit}
-                    />
-                  </div>
+                  <IndianAmountInput
+                    name="amount"
+                    label="Disputed amount (INR)"
+                    required
+                    className={control}
+                    defaultValue={
+                      initial?.amount_paise
+                        ? Number(initial.amount_paise) / 100
+                        : ""
+                    }
+                    hint="Enter the full amount in rupees. Shown as 2,58,205 for easy reading."
+                  />
                   <Choice
                     name="disputeType"
                     label="Type of dispute *"

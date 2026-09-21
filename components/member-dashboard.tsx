@@ -9,6 +9,7 @@ import {
   Search,
 } from "lucide-react";
 import { useWorkspacePageMeta } from "@/components/workspace-shell";
+import { SellerSearch } from "@/components/seller-search";
 import Link from "next/link";
 
 export type DashboardProfile = {
@@ -37,6 +38,9 @@ export function MemberDashboard({
   preview?: boolean;
   notificationCount?: number;
 }) {
+  const searchAvailable =
+    Boolean(profile.categoryLabel) && profile.searchEnabled !== false;
+
   useWorkspacePageMeta({
     eyebrow: preview ? "Administrator console" : "Company workspace",
     title: preview ? "Member preview" : profile.companyName,
@@ -45,20 +49,29 @@ export function MemberDashboard({
       : `Welcome, ${profile.responsiblePersonName}.`,
     actions: preview
       ? [{ href: "/admin", label: "Return to admin", variant: "primary" }]
-      : [
-          { href: "/member/sellers", label: "Search sellers", variant: "primary" },
-          { href: "/member/submit-report", label: "Submit report", variant: "secondary" },
-          { href: "/member/profile", label: "Company profile", variant: "ghost" },
-        ],
+      : searchAvailable
+        ? [
+            { href: "/member/submit-report", label: "Submit report", variant: "secondary" },
+            { href: "/member/reports", label: "My reports", variant: "ghost" },
+          ]
+        : [
+            { href: "/member/sellers", label: "Search sellers", variant: "primary" },
+            { href: "/member/submit-report", label: "Submit report", variant: "secondary" },
+            { href: "/member/profile", label: "Company profile", variant: "ghost" },
+          ],
   });
 
   const actions = [
-    {
-      href: "/member/sellers",
-      label: "Search sellers",
-      text: "Check approved seller experiences by GSTIN.",
-      icon: Search,
-    },
+    ...(searchAvailable
+      ? []
+      : [
+          {
+            href: "/member/sellers",
+            label: "Search sellers",
+            text: "Check approved seller experiences by GSTIN.",
+            icon: Search,
+          },
+        ]),
     {
       href: "/member/submit-report",
       label: "Submit report",
@@ -77,17 +90,22 @@ export function MemberDashboard({
     <div className="mx-auto max-w-6xl">
       {preview && (
         <div className="mb-5 rounded-[12px] border border-amber-200 bg-amber-50 px-5 py-3 text-center text-sm text-amber-900">
-          Administrator preview · Fictional company · No membership data is changed.
+          Administrator preview · Fictional company · No membership data is
+          changed.
         </div>
       )}
 
       <div className="flex flex-wrap items-end justify-between gap-5">
         <div>
-          <p className="text-sm font-semibold text-emerald-700">Company workspace</p>
+          <p className="text-sm font-semibold text-emerald-700">
+            Company workspace
+          </p>
           <h2 className="mt-2 break-words text-2xl font-semibold tracking-tight sm:text-3xl">
             {profile.companyName}
           </h2>
-          <p className="mt-2 text-slate-500">Welcome, {profile.responsiblePersonName}.</p>
+          <p className="mt-2 text-slate-500">
+            Welcome, {profile.responsiblePersonName}.
+          </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {profile.isPilot && (
@@ -112,7 +130,9 @@ export function MemberDashboard({
               <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                 Assigned category
               </p>
-              <p className="font-semibold text-[#15388c]">{profile.categoryLabel}</p>
+              <p className="font-semibold text-[#15388c]">
+                {profile.categoryLabel}
+              </p>
             </div>
           </div>
           <p className="flex items-center gap-2 text-sm text-slate-500">
@@ -129,50 +149,27 @@ export function MemberDashboard({
         </div>
       )}
 
-      {profile.categoryLabel && !preview && (
-        <Link
-          href="/member/sellers"
-          className={`mt-6 flex items-center justify-between gap-3 rounded-[12px] border px-4 py-3.5 transition ${
-            profile.searchEnabled === false
-              ? "border-amber-200 bg-amber-50/70 hover:border-amber-300"
-              : "border-slate-200 bg-white hover:border-blue-300 hover:bg-slate-50"
-          }`}
-        >
-          <div className="flex items-center gap-3">
-            <span
-              className={`grid size-10 place-items-center rounded-[12px] ${
-                profile.searchEnabled === false
-                  ? "bg-amber-100 text-amber-800"
-                  : "bg-[#15388c]/10 text-[#15388c]"
-              }`}
-            >
-              {profile.searchEnabled === false ? (
-                <LockKeyhole className="size-5" />
-              ) : (
-                <Search className="size-5" />
-              )}
-            </span>
-            <div>
-              <p className="text-[13px] font-semibold text-slate-900">
-                {profile.searchEnabled === false
-                  ? "Seller search disabled"
-                  : "Search sellers by GSTIN"}
-              </p>
-              <p className="text-[12px] text-slate-500">
-                {profile.searchEnabled === false
-                  ? "Contact the administrator to enable search access."
-                  : `Category: ${profile.categoryLabel}`}
-              </p>
-            </div>
-          </div>
-          <span
-            className={`text-[12px] font-semibold ${
-              profile.searchEnabled === false ? "text-amber-800" : "text-[#15388c]"
-            }`}
-          >
-            {profile.searchEnabled === false ? "View →" : "Open →"}
+      {profile.categoryLabel && !preview && searchAvailable && (
+        <div className="mt-2">
+          <SellerSearch prominent categoryLabel={profile.categoryLabel} />
+        </div>
+      )}
+
+      {profile.categoryLabel && !preview && profile.searchEnabled === false && (
+        <div className="mt-6 flex items-start gap-3 rounded-[12px] border border-amber-200 bg-amber-50/80 px-4 py-3.5">
+          <span className="grid size-10 shrink-0 place-items-center rounded-[12px] bg-amber-100 text-amber-800">
+            <LockKeyhole className="size-5" />
           </span>
-        </Link>
+          <div>
+            <p className="text-[13px] font-semibold text-slate-900">
+              Seller search is disabled
+            </p>
+            <p className="mt-1 text-[12px] text-slate-600">
+              Contact the administrator to enable GSTIN search for your
+              membership.
+            </p>
+          </div>
+        </div>
       )}
 
       <section className="mt-8">
@@ -180,7 +177,11 @@ export function MemberDashboard({
           <h3 className="text-xl font-semibold">Workspace actions</h3>
           <p className="mt-1 text-slate-500">Choose what you want to do next.</p>
         </div>
-        <div className="grid gap-4 md:grid-cols-3">
+        <div
+          className={`grid gap-4 ${
+            actions.length === 2 ? "md:grid-cols-2" : "md:grid-cols-3"
+          }`}
+        >
           {actions.map(action => (
             <Link
               key={action.href}
@@ -189,7 +190,9 @@ export function MemberDashboard({
             >
               <action.icon className="size-6 text-[#15388c]" />
               <h4 className="mt-5 font-semibold">{action.label}</h4>
-              <p className="mt-2 text-sm leading-6 text-slate-500">{action.text}</p>
+              <p className="mt-2 text-sm leading-6 text-slate-500">
+                {action.text}
+              </p>
             </Link>
           ))}
         </div>
