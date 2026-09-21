@@ -51,11 +51,21 @@ export async function listMembersForAdmin(){
   const [docs,stats]=await Promise.all([
     db.collection("members").find({}).sort({created_at:-1}).toArray(),
     db.collection("seller_reports").aggregate<{_id:unknown;reported_disputes:number;resolved_disputes:number}>([
-      {$match:{status:"approved",dispute:1}},
+      {$match:{status:"approved",dispute:{$in:[1,true,"1"]}}},
       {$group:{
         _id:"$member_id",
         reported_disputes:{$sum:1},
-        resolved_disputes:{$sum:{$cond:[{$eq:["$dispute_resolved",1]},1,0]}},
+        resolved_disputes:{$sum:{$cond:[
+          {$or:[
+            {$in:["$dispute_resolved",[1,true,"1"]]},
+            {$and:[
+              {$gt:[{$ifNull:["$amount_paise",0]},0]},
+              {$gte:[{$ifNull:["$resolved_amount_paise",0]},{$ifNull:["$amount_paise",0]}]},
+            ]},
+          ]},
+          1,
+          0,
+        ]}},
       }},
     ]).toArray(),
   ]);

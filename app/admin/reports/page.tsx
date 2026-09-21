@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { requireChatGPTUser } from "@/app/chatgpt-auth";
 import { isConfiguredAdmin, parseMemberId } from "@/lib/member-data";
 import { adminReportList } from "@/lib/report-list";
+import { syncResolvedDisputesFromApprovals } from "@/lib/sync-resolved-disputes";
 import { ReportShell } from "@/components/report-shell";
 import {
   SearchToolbar,
@@ -34,6 +35,7 @@ export default async function Page({
 }) {
   const user = await requireChatGPTUser("/admin/reports");
   if (!isConfiguredAdmin(user.email)) redirect("/join");
+  await syncResolvedDisputesFromApprovals();
   const params = await searchParams;
   const status = String(params.status || "pending");
   const category = String(params.category || "");
@@ -118,6 +120,13 @@ export default async function Page({
       </FilterField>
       <FilterField label="To date">
         <FilterInput type="date" name="to" defaultValue={params.to} />
+      </FilterField>
+      <FilterField label="Dispute">
+        <FilterSelect name="disputeStatus" defaultValue={disputeStatus}>
+          <option value="">All disputes</option>
+          <option value="reported">Reports with open dispute</option>
+          <option value="resolved">Reports with resolved dispute</option>
+        </FilterSelect>
       </FilterField>
     </SearchToolbar>
   );

@@ -12,6 +12,8 @@ export type AdminCounts = {
   rejectedReports: number;
   totalReports: number;
   pendingResolutions: number;
+  approvedResolutions: number;
+  rejectedResolutions: number;
   openDisputes: number;
   resolvedDisputes: number;
   totalDisputedPaise: number;
@@ -64,7 +66,7 @@ async function sumDisputeAmounts(db: Awaited<ReturnType<typeof mongoDb>>) {
   for (const row of rows) {
     const amount = asNumber(row.amount_paise);
     const resolvedAmount = asNumber(row.resolved_amount_paise);
-    const done = isFlagTrue(row.dispute_resolved);
+    const done = isFlagTrue(row.dispute_resolved) || (amount > 0 && resolvedAmount >= amount);
     total += amount;
     if (done) {
       resolved += resolvedAmount > 0 ? resolvedAmount : amount;
@@ -97,6 +99,8 @@ export async function adminCounts(): Promise<AdminCounts> {
     rejectedReports,
     totalReports,
     pendingResolutions,
+    approvedResolutions,
+    rejectedResolutions,
     openDisputes,
     resolvedDisputes,
     pendingPasswordResets,
@@ -114,15 +118,48 @@ export async function adminCounts(): Promise<AdminCounts> {
     db.collection("seller_reports").countDocuments({ status: "rejected" }),
     db.collection("seller_reports").countDocuments({}),
     db.collection("dispute_resolution_requests").countDocuments({ status: "pending" }),
-    // Open = approved open + pending disputes (admin money/work queue)
+    db.collection("dispute_resolution_requests").countDocuments({ status: "approved" }),
+    db.collection("dispute_resolution_requests").countDocuments({ status: "rejected" }),
+    // Open = approved/pending disputes not fully resolved (flag or amount-paid)
     db.collection("seller_reports").countDocuments({
       dispute: flagTrue,
-      dispute_resolved: flagNotTrue,
       status: { $in: ["pending", "approved"] },
+      $nor: [
+        { dispute_resolved: flagTrue },
+        {
+          $expr: {
+            $and: [
+              { $gt: [{ $ifNull: ["$amount_paise", 0] }, 0] },
+              {
+                $gte: [
+                  { $ifNull: ["$resolved_amount_paise", 0] },
+                  { $ifNull: ["$amount_paise", 0] },
+                ],
+              },
+            ],
+          },
+        },
+      ],
     }),
+    // Resolved = approved disputes fully closed (flag OR paid in full)
     db.collection("seller_reports").countDocuments({
       ...approvedDispute,
-      dispute_resolved: flagTrue,
+      $or: [
+        { dispute_resolved: flagTrue },
+        {
+          $expr: {
+            $and: [
+              { $gt: [{ $ifNull: ["$amount_paise", 0] }, 0] },
+              {
+                $gte: [
+                  { $ifNull: ["$resolved_amount_paise", 0] },
+                  { $ifNull: ["$amount_paise", 0] },
+                ],
+              },
+            ],
+          },
+        },
+      ],
     }),
     db.collection("password_reset_requests").countDocuments({ status: "pending" }),
     db.collection("security_events").countDocuments({
@@ -159,6 +196,8 @@ export async function adminCounts(): Promise<AdminCounts> {
     rejectedReports: asNumber(rejectedReports),
     totalReports: asNumber(totalReports),
     pendingResolutions: asNumber(pendingResolutions),
+    approvedResolutions: asNumber(approvedResolutions),
+    rejectedResolutions: asNumber(rejectedResolutions),
     openDisputes: asNumber(openDisputes),
     resolvedDisputes: asNumber(resolvedDisputes),
     totalDisputedPaise: asNumber(disputeTotals.total),

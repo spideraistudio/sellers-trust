@@ -232,18 +232,44 @@ export default async function AdminPage() {
           icon: FileX2,
         },
         {
-          label: "Open disputes",
+          label: "Reports with open dispute",
           value: counts.openDisputes,
-          href: "/admin/reports?status=all",
+          href: "/admin/reports?status=approved&disputeStatus=reported",
           tone: "rose",
           icon: AlertTriangle,
         },
         {
-          label: "Resolved disputes",
+          label: "Reports with resolved dispute",
           value: counts.resolvedDisputes,
           href: "/admin/reports?status=approved&disputeStatus=resolved",
           tone: "emerald",
           icon: CheckCircle2,
+        },
+      ],
+    },
+    {
+      title: "Dispute resolutions",
+      cards: [
+        {
+          label: "Pending resolutions",
+          value: counts.pendingResolutions,
+          href: "/admin/resolutions",
+          tone: "amber",
+          icon: Gavel,
+        },
+        {
+          label: "Approved resolutions",
+          value: counts.approvedResolutions,
+          href: "/admin/resolutions",
+          tone: "emerald",
+          icon: CheckCircle2,
+        },
+        {
+          label: "Rejected resolutions",
+          value: counts.rejectedResolutions,
+          href: "/admin/resolutions",
+          tone: "rose",
+          icon: FileX2,
         },
       ],
     },
@@ -253,7 +279,7 @@ export default async function AdminPage() {
         {
           label: "Total disputed",
           value: money(counts.totalDisputedPaise),
-          href: "/admin/reports?status=all",
+          href: "/admin/reports?status=approved&disputeStatus=reported",
           tone: "rose",
           icon: IndianRupee,
         },
@@ -267,7 +293,7 @@ export default async function AdminPage() {
         {
           label: "Open disputed",
           value: money(counts.openDisputedPaise),
-          href: "/admin/reports?status=all",
+          href: "/admin/reports?status=approved&disputeStatus=reported",
           tone: "amber",
           icon: IndianRupee,
         },
@@ -345,6 +371,8 @@ export default async function AdminPage() {
             openDisputes={counts.openDisputes}
             resolvedDisputes={counts.resolvedDisputes}
             pendingResolutions={counts.pendingResolutions}
+            approvedResolutions={counts.approvedResolutions}
+            rejectedResolutions={counts.rejectedResolutions}
             totalDisputedPaise={counts.totalDisputedPaise}
             openDisputedPaise={counts.openDisputedPaise}
             resolvedDisputedPaise={counts.resolvedDisputedPaise}
