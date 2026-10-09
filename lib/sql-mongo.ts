@@ -73,6 +73,8 @@ async function ensureIndexes(db:Db){
     db.collection("file_objects").createIndexes([{key:{object_key:1},unique:true}]),
     db.collection("security_rate_limits").createIndexes([{key:{key:1},unique:true}]),
     db.collection("notifications").createIndexes([{key:{audience:1,read_at:1,created_at:-1}}]),
+    db.collection("seed_buy_requests").createIndexes([{key:{id:1},unique:true},{key:{ownerId:1,createdAt:-1}},{key:{status:1,quotationDeadline:1}},{key:{status:1,panIndia:1,supplierStates:1}}]),
+    db.collection("seed_quotations").createIndexes([{key:{id:1},unique:true},{key:{requestId:1,supplierId:1},unique:true},{key:{requestId:1,status:1}},{key:{supplierId:1,updatedAt:-1}}]),
   ]).catch(()=>{/* indexes may already exist */});
 }
 

@@ -84,6 +84,14 @@ export function MemberDashboard({
       text: "Review submissions and request changes.",
       icon: Files,
     },
+    ...(profile.categoryLabel === "Agriculture"
+      ? [{
+          href: "/member/buy-sell",
+          label: "Buy/Sell Requirements",
+          text: "Raise Seed requirements and submit private quotations.",
+          icon: Leaf,
+        }]
+      : []),
   ];
 
   return (
